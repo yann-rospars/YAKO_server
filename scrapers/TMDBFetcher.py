@@ -6,7 +6,7 @@ import regex as re
 
 from datetime import datetime
 
-from scrapers.classes import Film
+from classes.Film import Film
 
 class TMDBFetcher:
     def __init__(self):
@@ -54,7 +54,7 @@ class TMDBFetcher:
 
                         dayDiff = abs((date_ac - date_tmdb).days)
 
-                        if(dayDiff < 150):
+                        if(dayDiff < 300):
                             potential_movies.append(movie_tmdb)         
 
         return potential_movies

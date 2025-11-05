@@ -3,7 +3,7 @@
 import psycopg2
 import json
 
-from scrapers.classes import Film
+from classes.Film import Film
 
 class DBManager:
     def __init__(self):
@@ -62,7 +62,7 @@ class DBManager:
             """, (
                 movie_ac.id, movie['id'], movie['title'], movie['original_title'], movie['adult'], movie['original_language'],
                 movie['overview'], movie['popularity'], movie['poster_path'],
-                movie_ac.release_date, movie['revenue'], movie['budget'], movie_ac.runtime,
+                movie['release_date'], movie['revenue'], movie['budget'], movie_ac.runtime,
                 movie['vote_average'], movie['vote_count'], [lang.get("iso_639_1") for lang in movie.get("spoken_languages", [])]
             ))
             movie_id = self.cursor.fetchone()[0]
@@ -78,11 +78,11 @@ class DBManager:
         try:
             self.cursor.execute("""
                 INSERT INTO movies (
-                    allocine_id, title, original_title, overview, release_date, runtime
-                ) VALUES (%s, %s, %s, %s, %s, %s)
+                    allocine_id, title, original_title, overview, release_date, runtime, poster_path
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
-                movie_ac.id, movie_ac.title, movie_ac.original_title, movie_ac.overview, movie_ac.release_date, movie_ac.runtime
+                movie_ac.id, movie_ac.title, movie_ac.original_title, movie_ac.overview, movie_ac.release_date, movie_ac.runtime, movie_ac.poster_path
             ))
             movie_id = self.cursor.fetchone()[0]
             self.conn.commit()
@@ -137,13 +137,22 @@ class DBManager:
             print(f"Erreur lors de l'insertion du mot-clé : {e}")
 
     # -- People
-    def insert_people(self, person_id, name, profile_path):
+    def insert_people(self, tmdb_id, ac_id, name, profile_path):
         try:
-            self.cursor.execute("INSERT INTO peoples (id, name, profile_path) VALUES (%s, %s, %s)", (person_id, name, profile_path))
+            self.cursor.execute("""
+                INSERT INTO peoples (tmdb_id, allocine_id, name, profile_path)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (tmdb_id, ac_id, name, profile_path))
+            
+            person_id = self.cursor.fetchone()[0]
             self.conn.commit()
+            return person_id
+
         except Exception as e:
             self.conn.rollback()
             print(f"Erreur lors de l'insertion de la personne : {e}")
+            return None
 
     def insert_movie_people(self, movie_id, person_id, role_type, character=None):
         try:
@@ -221,6 +230,22 @@ class DBManager:
         except Exception as e:
             print(f"Erreur lors de la recherche du genre : {e}")
             return None
+        
+    def get_people_id(self, id=None, tmdb_id=None, allocine_id=None):
+        if id is not None:
+            self.cursor.execute("SELECT id FROM peoples WHERE id = %s", (id,))
+            result = self.cursor.fetchone()
+        elif tmdb_id is not None:
+            self.cursor.execute("SELECT id FROM peoples WHERE tmdb_id = %s", (tmdb_id,))
+            result = self.cursor.fetchone()
+        elif allocine_id is not None:
+            self.cursor.execute("SELECT id FROM peoples WHERE allocine_id = %s", (allocine_id,))
+            result = self.cursor.fetchone()
+
+        if result:
+            return result[0]
+
+        return None
         
     # ----------------------------------------------
     # Modifie les données

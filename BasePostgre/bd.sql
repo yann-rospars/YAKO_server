@@ -68,9 +68,11 @@ CREATE TABLE movie_production_company (
 
 -- Table des personnes (acteur, réalisateur, etc.)
 CREATE TABLE peoples (
-    id INTEGER PRIMARY KEY,          -- ID TMDB
+    id SERIAL PRIMARY KEY,
+    allocine_id BIGINT UNIQUE,
+    tmdb_id BIGINT UNIQUE,
     name TEXT NOT NULL,
-    profile_path TEXT                -- photo
+    profile_path TEXT
 );
 
 -- Table de liaison entre personnes et films avec rôle

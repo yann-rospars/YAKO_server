@@ -1,4 +1,3 @@
-# Classes.py
 import unicodedata
 
 class Film:

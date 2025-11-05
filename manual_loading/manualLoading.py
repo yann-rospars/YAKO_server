@@ -7,7 +7,7 @@ import json
 
 from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.DBManager import DBManager
-from scrapers.classes import Film
+from classes.Film import Film
 
 TMDB_Fetcher = TMDBFetcher()
 DB_Manager = DBManager()
