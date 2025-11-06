@@ -111,14 +111,7 @@ class Film:
                     last_name = person.get("lastName", "").strip()
 
                     # Combine les deux noms
-                    full_name = f"{first_name} {last_name}".strip()
-
-                    # Supprime uniquement les accents
-                    full_name = unicodedata.normalize('NFD', full_name)
-                    full_name = full_name.encode('ascii', 'ignore').decode('utf-8')
-
-                    # Met en minuscules et nettoie les espaces superflus
-                    director = full_name.lower().strip()                    
+                    director = f"{first_name} {last_name}".strip()                  
                     break
 
         # --- Extraction du poster ---

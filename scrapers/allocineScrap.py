@@ -11,6 +11,7 @@ from datetime import date, timedelta, datetime
 from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.DBManager import DBManager
 from classes.Film import Film
+from tools.tools import normalize_name
 
 TMDB_Fetcher = TMDBFetcher()
 DB_Manager = DBManager()
@@ -98,16 +99,7 @@ def add_movie_to_BD(movie_ac):
         crew = data.get("credits", {}).get("crew", [])
         for member in crew:
             if member.get("job") == "Director":
-                director_tmdb = member.get("name")
-
-                # Supprime uniquement les accents (é → e, ç → c, ă → a, etc.)
-                director_tmdb = unicodedata.normalize('NFD', director_tmdb)
-                director_tmdb = director_tmdb.encode('ascii', 'ignore').decode('utf-8')
-
-                # Met en minuscules et supprime les espaces superflus
-                director_tmdb = director_tmdb.lower().strip()
-
-                potenial_movie.director = director_tmdb
+                potenial_movie.director = member.get("name")
                 break
 
         # vérifie si c'est le bon film
@@ -115,7 +107,7 @@ def add_movie_to_BD(movie_ac):
         if abs(potenial_movie.runtime - movie_ac.runtime) < 10:
             score+=1
 
-        if potenial_movie.director == movie_ac.director:
+        if normalize_name(potenial_movie.director) == normalize_name(movie_ac.director):
             score+=1
 
         date_ac = datetime.strptime(movie_ac.release_date, "%Y-%m-%d")
