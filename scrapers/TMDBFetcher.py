@@ -54,7 +54,7 @@ class TMDBFetcher:
 
                         dayDiff = abs((date_ac - date_tmdb).days)
 
-                        if(dayDiff < 300):
+                        if(dayDiff < 1095): # 3ans
                             potential_movies.append(movie_tmdb)         
 
         return potential_movies

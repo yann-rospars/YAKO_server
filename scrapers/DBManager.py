@@ -47,6 +47,10 @@ class DBManager:
         self.cursor.execute("SELECT id FROM movies WHERE allocine_id = %s", (allocine_id,))
         return self.cursor.fetchone()
     
+    def session_exists_allocineID(self, allocine_id):
+        self.cursor.execute("SELECT id FROM sessions WHERE allocine_id = %s", (allocine_id,))
+        return self.cursor.fetchone()
+    
     # ----------------------------------------------
     # Ajout de données
     # ----------------------------------------------
@@ -62,7 +66,7 @@ class DBManager:
             """, (
                 movie_ac.id, movie['id'], movie['title'], movie['original_title'], movie['adult'], movie['original_language'],
                 movie['overview'], movie['popularity'], movie['poster_path'],
-                movie['release_date'], movie['revenue'], movie['budget'], movie_ac.runtime,
+                movie_ac.release_date, movie['revenue'], movie['budget'], movie_ac.runtime,
                 movie['vote_average'], movie['vote_count'], [lang.get("iso_639_1") for lang in movie.get("spoken_languages", [])]
             ))
             movie_id = self.cursor.fetchone()[0]
@@ -232,6 +236,8 @@ class DBManager:
             return None
         
     def get_people_id(self, id=None, tmdb_id=None, allocine_id=None):
+        result = None
+
         if id is not None:
             self.cursor.execute("SELECT id FROM peoples WHERE id = %s", (id,))
             result = self.cursor.fetchone()
@@ -242,7 +248,7 @@ class DBManager:
             self.cursor.execute("SELECT id FROM peoples WHERE allocine_id = %s", (allocine_id,))
             result = self.cursor.fetchone()
 
-        if result:
+        if result is not None:
             return result[0]
 
         return None

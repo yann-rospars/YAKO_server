@@ -100,13 +100,13 @@ CREATE TABLE cinemas (
 
 CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,                       -- Internal session ID
+    allocine_id BIGINT UNIQUE,             -- Optional AlloCiné session ID
     movie_id INTEGER NOT NULL,                   -- Reference to the movie
     cinema_id INTEGER NOT NULL,                  -- Reference to the cinema
     startsAt TIMESTAMP NOT NULL,
     projection VARCHAR(50),                      -- Format (e.g. DIGITAL, IMAX, 3D)
     version VARCHAR(50),                         -- Version info (e.g. ORIGINAL, EXTENDED VERSION)
     booking_url TEXT,                            -- URL to buy tickets
-    allocine_id VARCHAR(255),                    -- Optional AlloCiné session ID
 
     FOREIGN KEY (movie_id) REFERENCES movies(id),
     FOREIGN KEY (cinema_id) REFERENCES cinemas(id)

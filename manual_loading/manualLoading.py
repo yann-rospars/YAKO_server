@@ -15,8 +15,8 @@ DB_Manager = DBManager()
 # -------------------------------------------------------------------------------
 id_db = "211"
 id_tmdb = "1311031"
-data = TMDB_Fetcher.get_movie_details(id_tmdb)
 
+data = TMDB_Fetcher.get_movie_details(id_tmdb)
 is_adult = data['adult']
 original_language = data['original_language']
 overview = data['overview']

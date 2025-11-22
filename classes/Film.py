@@ -1,11 +1,12 @@
 import unicodedata
 
 class Film:
-    def __init__(self, id, title, original_title, director, overview=None, release_date=None, runtime=None, poster_path=None):
+    def __init__(self, id, title, original_title, directors, id_directors, overview=None, release_date=None, runtime=None, poster_path=None):
         self.id = id
         self.title = title
         self.original_title = original_title
-        self.director = director
+        self.directors = directors
+        self.id_directors = id_directors
         self.overview = overview
         self.release_date = release_date
         self.runtime = runtime
@@ -13,7 +14,7 @@ class Film:
 
     def __repr__(self):
         return (
-            f"Film(id={self.id}, title='{self.title}', original_title='{self.original_title}', Director='{self.director}', "
+            f"Film(id={self.id}, title='{self.title}', original_title='{self.original_title}', Director='{self.directors}',  ID_Director='{self.id_directors}',"
             f"release_date={self.release_date}, runtime={self.runtime}, poster_path={self.poster_path})"
         )
 
@@ -25,7 +26,8 @@ class Film:
             id = tmdb_data.get("id"),
             title=tmdb_data.get("title"),
             original_title=tmdb_data.get("original_title"),
-            director=None,
+            directors=None,
+            id_directors=None,
             overview=tmdb_data.get("overview"),
             release_date=tmdb_data.get("release_date"),
             runtime=None,
@@ -98,27 +100,35 @@ class Film:
                 minutes = int(runtimeSplit[0])
             runtime = hours * 60 + minutes
         
-        # --- Extraction du director ---
-        director = None
-        credits = allocine_data.get("credits")
+        # --- Extraction des directors ---
+        directors = []          # liste des noms
+        id_directors = []      # liste des internalId
+        credits = allocine_data.get("credits", [])
+
         if isinstance(credits, list):
             for credit in credits:
                 position = credit.get("position", {})
                 if position.get("name") == "DIRECTOR":
+
                     person = credit.get("person", {})
-                    first_name = person.get("firstName", "").strip()
-                    last_name = person.get("lastName", "").strip()
 
-                    # Combine les deux noms
-                    full_name = f"{first_name} {last_name}".strip()
+                    # Récupère les noms avec sécurité
+                    first_name = person.get("firstName") or ""
+                    last_name = person.get("lastName") or ""
 
-                    # Supprime uniquement les accents
-                    full_name = unicodedata.normalize('NFD', full_name)
-                    full_name = full_name.encode('ascii', 'ignore').decode('utf-8')
+                    first_name = str(first_name).strip()
+                    last_name = str(last_name).strip()
 
-                    # Met en minuscules et nettoie les espaces superflus
-                    director = full_name.lower().strip()                    
-                    break
+                    # Ajout ID Allociné s'il existe
+                    internal_id = person.get("internalId")
+                    if internal_id:
+                        id_directors.append(internal_id)
+
+                    # Combine les deux noms uniquement s’il y en a au moins un
+                    if first_name or last_name:
+                        full_name = f"{first_name} {last_name}".strip()
+                        directors.append(full_name)
+
 
         # --- Extraction du poster ---
         poster_path = None
@@ -132,58 +142,10 @@ class Film:
             id = allocine_data.get("internalId"),
             title = allocine_data.get("title", "Titre non disponible"),
             original_title = allocine_data.get("originalTitle", "Titre original non disponible"),
-            director = director,
+            directors = directors,
+            id_directors = id_directors,
             overview = synopsis,
             release_date = release_date,
             runtime = runtime,
             poster_path = poster_path
         )
-
-    # --- Getters et Setters (optionnels, ici surtout pour clarté) ---
-    def get_id(self):
-        return self.id
-
-    def set_id(self, new_id):
-        self.id = new_id
-
-    def get_title(self):
-        return self.title
-
-    def set_title(self, new_title):
-        self.title = new_title
-
-    def get_original_title(self):
-        return self.original_title
-
-    def set_original_title(self, new_original_title):
-        self.original_title = new_original_title
-
-    def get_director(self):
-        return self.director
-
-    def set_director(self, director):
-        self.director = director
-
-    def get_overview(self):
-        return self.overview
-
-    def set_overview(self, new_overview):
-        self.overview = new_overview
-
-    def get_release_date(self):
-        return self.release_date
-
-    def set_release_date(self, new_date):
-        self.release_date = new_date
-
-    def get_runtime(self):
-        return self.runtime
-
-    def set_runtime(self, new_runtime):
-        self.runtime = new_runtime
-
-    def get_runtime(self):
-        return self.poster_path
-
-    def set_runtime(self, new_poster_path):
-        self.runtime = new_poster_path

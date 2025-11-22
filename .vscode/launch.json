@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run TMDBFetcher",
+            "type": "python",
+            "request": "launch",
+            "module": "scrapers.TMDBFetcher",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run allocineScrap",
+            "type": "python",
+            "request": "launch",
+            "module": "scrapers.allocineScrap",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
