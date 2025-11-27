@@ -1,4 +1,5 @@
 import unicodedata
+import re
 from classes.Director import Director
 
 # --------------------------------------------------------
@@ -90,21 +91,6 @@ def charge_directors_with_TMDB(directors, crew):
 
     return directors
 
-
-# --------------------------------------------------------
-# Extrait la liste de nom de Director depuis les données TMDB
-# --------------------------------------------------------
-def extract_tmdb_director_names(crew):
-    tmdb_names = []
-
-    for member in crew:
-        if member.get("job") == "Director":
-            name = member.get("name")
-            if name:
-                tmdb_names.append(name)
-
-    return tmdb_names
-
 # --------------------------------------------------------
 # Compare deux liste de nom (de director par exemple)
 # --------------------------------------------------------
@@ -119,3 +105,12 @@ def compare_directors(ac_list, tmdb_list):
         return 0
 
     return -5 # il y'a trop de différences
+
+
+def normalize_title(title: str) -> str:
+    if not title:
+        return ""
+    
+    cleaned = re.sub(r"[^\p{L}\p{N}\s]", "", title) # Supprimer les caractères non lettres/non chiffres
+    cleaned = re.sub(r"\s+", " ", cleaned).strip().lower() # Normaliser les espaces
+    return cleaned # En minuscule

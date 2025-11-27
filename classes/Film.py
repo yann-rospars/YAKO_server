@@ -1,37 +1,61 @@
 import unicodedata
 
 class Film:
-    def __init__(self, id, title, original_title, directors, id_directors, overview=None, release_date=None, runtime=None, poster_path=None):
+    def __init__(self, id, allocine_id, tmdb_id, title, original_title, is_adult, original_language, overview, popularity, poster_path, release_date, revenue, budget, runtime, vote_average, vote_count, spoken_languages):
         self.id = id
+        self.allocine_id = allocine_id
+        self.tmdb_id = tmdb_id
         self.title = title
         self.original_title = original_title
-        self.directors = directors
-        self.id_directors = id_directors
+        self.is_adult = is_adult
+        self.original_language = original_language
         self.overview = overview
-        self.release_date = release_date
-        self.runtime = runtime
+        self.popularity = popularity
         self.poster_path = poster_path
+        self.release_date = release_date
+        self.revenue = revenue
+        self.budget = budget
+        self.runtime = runtime
+        self.vote_average = vote_average
+        self.vote_count = vote_count
+        self.spoken_languages = spoken_languages
 
     def __repr__(self):
         return (
-            f"Film(id={self.id}, title='{self.title}', original_title='{self.original_title}', Director='{self.directors}',  ID_Director='{self.id_directors}',"
-            f"release_date={self.release_date}, runtime={self.runtime}, poster_path={self.poster_path})"
+            "Film("
+            f"id={self.id}, "
+            f"title='{self.title}', "
+            f"original_title='{self.original_title}', "
+            f"release_date={self.release_date}, "
+            f"runtime={self.runtime}, "
+            f"allocine_id={self.allocine_id}, "
+            f"tmdb_id={self.tmdb_id}, "
+            f"poster_path='{self.poster_path}'"
+            ")"
         )
-
-    # --- Constructeur alternatif : depuis TMDB ---
+    
     @classmethod
-    def from_tmdb(cls, tmdb_data):
-        """Crée un Film à partir d'un objet TMDB (clé ou format spécifique)."""
+    def from_tmdb_no_details(cls, tmdb_data):
+        """Crée un Film avec un minimum d'informations depuis la source TMDB sans détails."""
+
         return cls(
-            id = tmdb_data.get("id"),
+            id=None,
+            allocine_id=None,
+            tmdb_id=tmdb_data.get("id"),
             title=tmdb_data.get("title"),
             original_title=tmdb_data.get("original_title"),
-            directors=None,
-            id_directors=None,
+            is_adult=None,
+            original_language=tmdb_data.get("original_language"),
             overview=tmdb_data.get("overview"),
+            popularity=tmdb_data.get("popularity"),
+            poster_path=tmdb_data.get("poster_path"),
             release_date=tmdb_data.get("release_date"),
+            revenue=None,
+            budget=None,
             runtime=None,
-            poster_path=None
+            vote_average=tmdb_data.get("vote_average"),
+            vote_count=tmdb_data.get("vote_count"),
+            spoken_languages=None
         )
 
     # --- Constructeur alternatif : depuis Allociné ---
@@ -99,35 +123,6 @@ class Film:
                 hours = 0
                 minutes = int(runtimeSplit[0])
             runtime = hours * 60 + minutes
-        
-        # --- Extraction des directors ---
-        directors = []          # liste des noms
-        id_directors = []      # liste des internalId
-        credits = allocine_data.get("credits", [])
-
-        if isinstance(credits, list):
-            for credit in credits:
-                position = credit.get("position", {})
-                if position.get("name") == "DIRECTOR":
-
-                    person = credit.get("person", {})
-
-                    # Récupère les noms avec sécurité
-                    first_name = person.get("firstName") or ""
-                    last_name = person.get("lastName") or ""
-
-                    first_name = str(first_name).strip()
-                    last_name = str(last_name).strip()
-
-                    # Ajout ID Allociné s'il existe
-                    internal_id = person.get("internalId")
-                    if internal_id:
-                        id_directors.append(internal_id)
-
-                    # Combine les deux noms uniquement s’il y en a au moins un
-                    if first_name or last_name:
-                        full_name = f"{first_name} {last_name}".strip()
-                        directors.append(full_name)
 
 
         # --- Extraction du poster ---
@@ -136,16 +131,27 @@ class Film:
 
         if isinstance(poster_data, dict):
             poster_path = poster_data.get("path")
-
-
+    
         return cls(
-            id = allocine_data.get("internalId"),
-            title = allocine_data.get("title", "Titre non disponible"),
-            original_title = allocine_data.get("originalTitle", "Titre original non disponible"),
-            directors = directors,
-            id_directors = id_directors,
-            overview = synopsis,
-            release_date = release_date,
-            runtime = runtime,
-            poster_path = poster_path
+            id=None,
+            allocine_id=allocine_data.get("internalId"),
+            tmdb_id=None,  # Allociné n'a pas de TMDB ID
+
+            title=allocine_data.get("title", "Titre non disponible"),
+            original_title=allocine_data.get("originalTitle", "Titre original non disponible"),
+            is_adult=None,  
+            original_language=None,
+            overview=synopsis,
+            release_date=release_date,
+
+            revenue=None,
+            budget=None,
+            runtime=runtime,
+
+            vote_average=None,
+            vote_count=None,
+            spoken_languages=None,
+
+            popularity=None,
+            poster_path=poster_path
         )

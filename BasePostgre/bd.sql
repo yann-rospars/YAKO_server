@@ -100,7 +100,7 @@ CREATE TABLE cinemas (
 
 CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,                       -- Internal session ID
-    allocine_id BIGINT UNIQUE,             -- Optional AlloCiné session ID
+    allocine_id BIGINT UNIQUE,                   -- Optional AlloCiné session ID
     movie_id INTEGER NOT NULL,                   -- Reference to the movie
     cinema_id INTEGER NOT NULL,                  -- Reference to the cinema
     startsAt TIMESTAMP NOT NULL,

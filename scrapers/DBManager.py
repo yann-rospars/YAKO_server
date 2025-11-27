@@ -21,7 +21,7 @@ class DBManager:
         self.conn.close()
 
     # ----------------------------------------------
-    # Vérification d'existence
+    # Check if exist
     # ----------------------------------------------
     def movie_exists(self, movie_id):
         self.cursor.execute("SELECT 1 FROM movies WHERE id = %s", (movie_id,))
@@ -52,7 +52,7 @@ class DBManager:
         return self.cursor.fetchone()
     
     # ----------------------------------------------
-    # Ajout de données
+    # Insert
     # ----------------------------------------------
     def insert_movie_TMDB(self, movie, movie_ac):
         try:
@@ -64,7 +64,7 @@ class DBManager:
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
-                movie_ac.id, movie['id'], movie['title'], movie['original_title'], movie['adult'], movie['original_language'],
+                movie_ac.allocine_id, movie['id'], movie['title'], movie['original_title'], movie['adult'], movie['original_language'],
                 movie['overview'], movie['popularity'], movie['poster_path'],
                 movie_ac.release_date, movie['revenue'], movie['budget'], movie_ac.runtime,
                 movie['vote_average'], movie['vote_count'], [lang.get("iso_639_1") for lang in movie.get("spoken_languages", [])]
@@ -86,7 +86,7 @@ class DBManager:
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
-                movie_ac.id, movie_ac.title, movie_ac.original_title, movie_ac.overview, movie_ac.release_date, movie_ac.runtime, movie_ac.poster_path
+                movie_ac.allocine_id, movie_ac.title, movie_ac.original_title, movie_ac.overview, movie_ac.release_date, movie_ac.runtime, movie_ac.poster_path
             ))
             movie_id = self.cursor.fetchone()[0]
             self.conn.commit()
@@ -183,7 +183,7 @@ class DBManager:
 
 
     # ----------------------------------------------
-    # Recherche de données
+    # GET Info
     # ----------------------------------------------
     def get_movie_id(self, tmdb_id=None, allocine_id=None):
         try:
@@ -236,25 +236,54 @@ class DBManager:
             return None
         
     def get_people_id(self, id=None, tmdb_id=None, allocine_id=None):
-        result = None
+        query = None
+        param = None
 
         if id is not None:
-            self.cursor.execute("SELECT id FROM peoples WHERE id = %s", (id,))
-            result = self.cursor.fetchone()
+            query = "SELECT id FROM peoples WHERE id = %s"
+            param = (id,)
         elif tmdb_id is not None:
-            self.cursor.execute("SELECT id FROM peoples WHERE tmdb_id = %s", (tmdb_id,))
-            result = self.cursor.fetchone()
+            query = "SELECT id FROM peoples WHERE tmdb_id = %s"
+            param = (tmdb_id,)
         elif allocine_id is not None:
-            self.cursor.execute("SELECT id FROM peoples WHERE allocine_id = %s", (allocine_id,))
-            result = self.cursor.fetchone()
+            query = "SELECT id FROM peoples WHERE allocine_id = %s"
+            param = (allocine_id,)
+        else:
+            return None
 
-        if result is not None:
+        self.cursor.execute(query, param)
+        result = self.cursor.fetchone()
+
+        if result :
             return result[0]
-
         return None
+    
+    def get_movie_titles(self, id=None, tmdb_id=None, allocine_id=None):
+        query = None
+        param = None
+
+        if id is not None:
+            query = "SELECT title, original_title FROM movies WHERE id = %s"
+            param = (id,)
+        elif tmdb_id is not None:
+            query = "SELECT title, original_title FROM movies WHERE tmdb_id = %s"
+            param = (tmdb_id,)
+        elif allocine_id is not None:
+            query = "SELECT title, original_title FROM movies WHERE allocine_id = %s"
+            param = (allocine_id,)
+        else:
+            return None
+
+        self.cursor.execute(query, param)
+        result = self.cursor.fetchone()
+
+        if result:
+            return result[0], result[1] # title, original_title
+        return None
+
         
     # ----------------------------------------------
-    # Modifie les données
+    # Update
     # ----------------------------------------------
     def update_movie_TMDB(self, movie_id, **kwargs):
         try:
@@ -290,4 +319,66 @@ class DBManager:
             self.conn.rollback()
             print(f"Erreur lors de la mise à jour du film (id={movie_id}) : {e}")
             return False
+    
+    # Update dynamique de people
+    def update_people(self, person_id, tmdb_id=None, allocine_id=None, name=None, profile_path=None):
+        fields = []
+        values = []
 
+        if allocine_id is not None:
+            fields.append("allocine_id = %s")
+            values.append(allocine_id)
+
+        if tmdb_id is not None:
+            fields.append("tmdb_id = %s")
+            values.append(tmdb_id)
+
+        if name is not None:
+            fields.append("name = %s")
+            values.append(name)
+
+        if profile_path is not None:
+            fields.append("profile_path = %s")
+            values.append(profile_path)
+
+        if fields:
+            values.append(person_id)
+            sql = f"UPDATE peoples SET {', '.join(fields)} WHERE id = %s"
+
+            try:
+                self.cursor.execute(sql, values)
+                self.conn.commit()
+            except Exception as e:
+                self.conn.rollback()
+                print(f"Erreur lors de la mise à jour de la personne : {e}")
+
+    def update_movie_people_director(self, old_person_id, new_person_id):
+        """
+        Remplace old_person_id par new_person_id dans movie_people.
+        Utile pour fusionner deux entrées peoples.
+        """
+        try:
+            self.cursor.execute("""
+                UPDATE movie_people
+                SET person_id = %s
+                WHERE person_id = %s
+            """, (new_person_id, old_person_id))
+            self.conn.commit()
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Erreur update_movie_people : {e}")
+
+    # ----------------------------------------------
+    # Delete
+    # ----------------------------------------------
+    def delete_director(self, person_id):
+        """
+        Supprime une entrée de la table peoples.
+        """
+        try:
+            self.cursor.execute("DELETE FROM peoples WHERE id = %s", (person_id,))
+            self.conn.commit()
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Erreur delete_director : {e}")

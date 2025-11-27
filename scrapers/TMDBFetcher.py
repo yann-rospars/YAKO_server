@@ -7,6 +7,7 @@ import regex as re
 from datetime import datetime
 
 from classes.Film import Film
+from tools.tools import normalize_title
 
 class TMDBFetcher:
     def __init__(self):
@@ -28,21 +29,14 @@ class TMDBFetcher:
             nb_pages = data.get('total_pages')
             page +=1
 
-            for movie in data.get('results', []):
-                movie_tmdb = Film.from_tmdb(movie)
+            for movie_data in data.get('results', []):
+                movie_tmdb = Film.from_tmdb_no_details(movie_data)
 
                 # --- Nettoyage des titres avant comparaison ---
-                tmdb_title = re.sub(r"[^\p{L}\p{N}\s]", "", movie_tmdb.title)
-                tmdb_title = re.sub(r"\s+", " ", tmdb_title).strip().lower()
-
-                ac_title = re.sub(r"[^\p{L}\p{N}\s]", "", movie_ac.title)
-                ac_title = re.sub(r"\s+", " ", ac_title).strip().lower()
-
-                tmdb_original_title = re.sub(r"[^\p{L}\p{N}\s]", "", movie_tmdb.original_title)
-                tmdb_original_title = re.sub(r"\s+", " ", tmdb_original_title).strip().lower()
-
-                ac_original_title = re.sub(r"[^\p{L}\p{N}\s]", "", movie_ac.original_title)
-                ac_original_title = re.sub(r"\s+", " ", ac_original_title).strip().lower()
+                tmdb_title = normalize_title(movie_tmdb.title)
+                ac_title = normalize_title(movie_ac.title)
+                tmdb_original_title = normalize_title(movie_tmdb.original_title)
+                ac_original_title = normalize_title(movie_ac.original_title)
 
                 if (tmdb_title == ac_title or tmdb_original_title == ac_original_title):
                     if movie_ac.release_date and movie_tmdb.release_date:
@@ -69,4 +63,18 @@ class TMDBFetcher:
             raise Exception(f"Erreur lors de la récupération du film TMDB (code {response.status_code})")
         return response.json()
     
+    # --------------------------------------------------------
+    # Extrait la liste de nom de Director depuis les données crew TMDB
+    # --------------------------------------------------------
+    @staticmethod
+    def extract_tmdb_director_names(crew):
+        tmdb_names = []
+
+        for member in crew:
+            if member.get("job") == "Director":
+                name = member.get("name")
+                if name:
+                    tmdb_names.append(name)
+
+        return tmdb_names
 

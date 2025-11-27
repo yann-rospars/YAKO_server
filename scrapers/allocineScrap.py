@@ -12,7 +12,7 @@ from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.DBManager import DBManager
 from classes.Film import Film
 from classes.Director import Director
-from tools.tools import charge_directors_with_AC, extract_tmdb_director_names, compare_directors, charge_directors_with_TMDB
+from tools.tools import charge_directors_with_AC, compare_directors, charge_directors_with_TMDB
 
 TMDB_Fetcher = TMDBFetcher()
 DB_Manager = DBManager()
@@ -63,29 +63,31 @@ def fecth_allocine_sessions(CineID_AC, day, cineID):
 
         # Extraire les films et leurs sceances
         for movie in data.get("results", []):
-            movie_info = movie.get("movie", {})
+                movie_info = movie.get("movie", {})
 
-            if movie_info is None:
-                continue
-        
-            showtimes = movie.get("showtimes", {})
+                if movie_info is None:
+                    continue
+            
+                showtimes = movie.get("showtimes", {})
 
-            # informations du film
-            movie_ac = Film.from_allocine(movie_info)
-            directors = charge_directors_with_AC(movie_info)
+                # informations du film
+                movie_ac = Film.from_allocine(movie_info)
+                directors = charge_directors_with_AC(movie_info)
 
-            # Vérification de son existance dans notre BD
-            if DB_Manager.movie_exists_allocineID(movie_ac.id):
-                print(f"Le film {movie_ac.title} avec l'id_allocine {movie_ac.id} existe déjà dans la BD.")
-                movie_id = DB_Manager.get_movie_id(allocine_id=movie_ac.id)
-            else:
-                print(f"Le film {movie_ac.title} avec l'id_allocine {movie_ac.id} n'existe pas dans la BD.")
-                movie_id = add_movie_to_BD(movie_ac, directors)
+                # Vérification de son existance dans notre BD
+                movie_id = DB_Manager.get_movie_id(allocine_id=movie_ac.allocine_id)
+                if movie_id is None :
+                    print(f"Le film {movie_ac.title} avec l'id_allocine {movie_ac.allocine_id} n'existe pas dans la BD.")
+                    movie_id = add_movie_to_BD(movie_ac, directors)
+                else:
+                    print(f"Le film {movie_ac.title} avec l'id_allocine {movie_ac.allocine_id} existe déjà dans la BD.")
 
-            # stockage des scéances
-            for category in ["original", "dubbed", "local", "multiple"]:
-                for session in showtimes.get(category, []):
-                    add_sessions_to_bd(movie_id, cineID, session)
+                # stockage des scéances
+                for category in ["original", "dubbed", "local", "multiple"]:
+                    for session in showtimes.get(category, []):
+                        add_sessions_to_bd(movie_id, cineID, session)
+                
+                # break #TEST 1 film
 
 # -------------------------------------------------------------------------------
 # ajout d'un film dans la BD depuis TMDB
@@ -98,7 +100,7 @@ def add_movie_to_BD(movie_ac, directors):
     # --- selectionne le bon film
     for potenial_movie in potential_movies_tmdb:
         score = 0
-        data = TMDB_Fetcher.get_movie_details(potenial_movie.id)
+        data = TMDB_Fetcher.get_movie_details(potenial_movie.tmdb_id)
 
         # Vérification du runtime
         potenial_movie.runtime = data.get("runtime")
@@ -114,7 +116,7 @@ def add_movie_to_BD(movie_ac, directors):
 
         # Vériication des directors
         crew = data.get("credits", {}).get("crew", [])
-        tmdb_directors_names = extract_tmdb_director_names(crew)
+        tmdb_directors_names = TMDB_Fetcher.extract_tmdb_director_names(crew)
         ac_directors_names = [d.name for d in directors if d.name]
         score += compare_directors(ac_directors_names, tmdb_directors_names)
 
@@ -127,13 +129,14 @@ def add_movie_to_BD(movie_ac, directors):
     if(movie_tmdb != None):
 
         # --- film existe via chargement TMDB
-        movie_id = DB_Manager.get_movie_id(tmdb_id=movie_tmdb.id)
+        movie_id = DB_Manager.get_movie_id(tmdb_id=movie_tmdb.tmdb_id)
 
         if ( movie_id != None):
             DB_Manager.update_movie_TMDB(
-                allocine_id=movie_ac.id,
-                runtime=movie_ac.runtime,
-                release_date=movie_ac.release_date
+                movie_id = movie_id,
+                allocine_id = movie_ac.allocine_id,
+                runtime = movie_ac.runtime,
+                release_date = movie_ac.release_date
             )
         
         # --- Film TMDB n'existe pas dans la BD
@@ -141,7 +144,7 @@ def add_movie_to_BD(movie_ac, directors):
             print(f"Charge avec TMDB")
 
             # Recup les info TMDB du film
-            tmdb_movie_info = TMDB_Fetcher.get_movie_details(movie_tmdb.id)
+            tmdb_movie_info = TMDB_Fetcher.get_movie_details(movie_tmdb.tmdb_id)
 
             # Charge le film
             movie_id = DB_Manager.insert_movie_TMDB(tmdb_movie_info,movie_ac)
@@ -160,12 +163,27 @@ def add_movie_to_BD(movie_ac, directors):
                 DB_Manager.insert_movie_production_company(movie_id, production_companie['id'])
 
             # Charge les Personnes associé au film
-            for crew in tmdb_movie_info['credits']['crew']:
-                if crew['job'] == "Director" :
-                    person_id = DB_Manager.get_people_id(None, crew['id'], None)
-                    if person_id is None:
-                        person_id = DB_Manager.insert_people(crew['id'],None,crew['name'],crew['profile_path'])
-                    DB_Manager.insert_movie_people(movie_id,person_id, "director")                
+            for director in directors:
+                    person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)     
+                    person_id_2 = DB_Manager.get_people_id(None, None, director.id_ac)
+
+                    if person_id_1 is None and person_id_2 is None: # Le director n'est pas dans la BD
+                        person_id = DB_Manager.insert_people(director.id_tmdb,director.id_ac,director.name,director.profile_path)
+                    elif person_id_1 is not None :                      # Le director est dans la BD avec l'id TMDB
+                        person_id = person_id_1
+                        DB_Manager.update_people(person_id,allocine_id=director.id_ac)
+                    elif person_id_2 is not None :                      # Le director est dans la BD avec l'id Allocine
+                        person_id = person_id_2
+                        DB_Manager.update_people(person_id,tmdb_id=director.id_tmdb,profile_path=director.profile_path)
+                    elif person_id_2 == person_id_1 :               # Le directeur est déjà entier dans la BD
+                        person_id = person_id_1
+                    else :                                          # Il y'a deux verson du director dans la BD
+                        person_id = person_id_1 # (On garde le people chargé avec TMDB)
+                        DB_Manager.update_people(person_id,allocine_id=director.id_ac)
+                        DB_Manager.update_movie_people_director(person_id_2,person_id) # (old, new)
+                        DB_Manager.delete_director(person_id_2)
+
+                    DB_Manager.insert_movie_people(movie_id,person_id,"director",None)
 
             # for cast in tmdb_movie_info['credits']['cast'][:5]:
             #     if not DB_Manager.people_exists(cast['id']):
@@ -179,11 +197,7 @@ def add_movie_to_BD(movie_ac, directors):
         movie_id = DB_Manager.insert_movie_AC(movie_ac)
 
         # # charge le Director
-        # if  movie_ac.id_director is not None and movie_ac.director is not None :
-        #     person_id = DB_Manager.get_people_id(None, None, movie_ac.id_director)
-        #     if person_id is None:
-        #         person_id = DB_Manager.insert_people(None,movie_ac.id_director,movie_ac.director,None)
-        #     DB_Manager.insert_movie_people(movie_id,person_id, "director")
+        
 
     return movie_id
 
@@ -233,5 +247,4 @@ def allo_cine_runtime_to_minutes(runtime: str) -> int:
 # -------------------------------------------------------------------------------
 # Main --------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
-print ("--")
 paris_sessions()
