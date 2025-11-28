@@ -1,5 +1,5 @@
 import unicodedata
-import re
+import regex as re
 from classes.Director import Director
 
 # --------------------------------------------------------
@@ -49,9 +49,10 @@ def charge_directors_with_AC(allocine_data) -> list[Director]:
                     continue
 
                 directors.append(Director(
-                    name=full_name,
+                    id=None,
                     id_ac=internal_id,
                     id_tmdb=None,
+                    name=full_name,
                     profile_path=None
                 ))
 
@@ -83,9 +84,10 @@ def charge_directors_with_TMDB(directors, crew):
             existing.profile_path = profile_path
         else:
             directors.append(Director(
-                name=name,
+                id=None,
                 id_ac=None,
                 id_tmdb=id_tmdb,
+                name=name,
                 profile_path=profile_path
             ))
 
@@ -106,7 +108,9 @@ def compare_directors(ac_list, tmdb_list):
 
     return -5 # il y'a trop de différences
 
-
+# --------------------------------------------------------
+# Normalise un Titre
+# --------------------------------------------------------
 def normalize_title(title: str) -> str:
     if not title:
         return ""

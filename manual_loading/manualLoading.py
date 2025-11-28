@@ -10,6 +10,7 @@ from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.DBManager import DBManager
 from classes.Film import Film
 from tools.tools import normalize_title
+from tools.tools import charge_directors_with_TMDB
 
 
 TMDB_Fetcher = TMDBFetcher()
@@ -17,11 +18,11 @@ DB_Manager = DBManager()
 
 
 # ------------------------------------------------------------------------------
-with open("mapping_movies.csv", newline="", encoding="utf-8") as f:
-    reader = csv.DictReader(f)   # Lit la première ligne comme header
+with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f, delimiter=";")
 
     for row in reader:
-        id_db = row["Allocine ID"]
+        id_db = row["DB ID"]
         id_tmdb = row["TMDB ID"]
 
         # Extraction des données TMDB
@@ -92,4 +93,48 @@ with open("mapping_movies.csv", newline="", encoding="utf-8") as f:
                 DB_Manager.insert_movie_production_company(id_db, production_companie['id'])
 
             # Charge les Personnes associé au film
+            crew = tmdb_movie_info.get("credits", {}).get("crew", [])
+            directors = DB_Manager.get_movie_directors(id_db)
+            directors = charge_directors_with_TMDB(directors, crew)
 
+            DB_Manager.delete_movie_people_wth_movie(id_db) # Supprime tout les liens du film avec les personnes
+
+            for director in directors:
+
+                # Suprime si le directeur est sans lien avec des film
+                if(director.id_ac is not None):
+                    if not DB_Manager.movie_people_exists_wth_person(director.id):
+                        DB_Manager.delete_people(director.id)
+
+                # On charge les réalisateurs
+                if (director.id_tmdb is not None):
+                    if(director.id_ac is not None):
+                        person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)     
+                        person_id_2 = DB_Manager.get_people_id(None, None, director.id_ac)
+
+                        if person_id_1 is None and person_id_2 is None: # Le director n'est pas dans la BD
+                            person_id = DB_Manager.insert_people(director.id_tmdb,director.id_ac,director.name,director.profile_path)
+                        elif person_id_1 is not None and person_id_2 is None: # Le director est dans la BD avec l'id TMDB
+                            person_id = person_id_1
+                            DB_Manager.update_people(person_id,allocine_id=director.id_ac)
+                        elif person_id_2 is not None and person_id_1 is None: # Le director est dans la BD avec l'id Allocine
+                            person_id = person_id_2
+                            DB_Manager.update_people(person_id,tmdb_id=director.id_tmdb,profile_path=director.profile_path)
+                        elif person_id_2 == person_id_1 : # Le directeur est déjà entier dans la BD
+                            person_id = person_id_1
+                        else : # Il y'a deux version du director dans la BD (On garde le people chargé avec TMDB)
+                            person_id = person_id_1
+                            DB_Manager.update_people(person_id,allocine_id=director.id_ac)
+                            DB_Manager.update_movie_people_director(person_id_2,person_id) # (old, new)
+                            DB_Manager.delete_director(person_id_2)
+
+                    else :
+                        person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)  
+                        if person_id_1 is None : # Le director n'est pas dans la BD
+                            person_id = DB_Manager.insert_people(director.id_tmdb,None,director.name,director.profile_path)
+                        else :
+                            person_id = person_id_1
+                        
+                    DB_Manager.insert_movie_people(id_db,person_id,"director",None)
+
+                        

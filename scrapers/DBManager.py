@@ -4,6 +4,8 @@ import psycopg2
 import json
 
 from classes.Film import Film
+from classes.Director import Director
+
 
 class DBManager:
     def __init__(self):
@@ -51,10 +53,18 @@ class DBManager:
         self.cursor.execute("SELECT id FROM sessions WHERE allocine_id = %s", (allocine_id,))
         return self.cursor.fetchone()
     
+    def movie_people_exists_wth_person(self, person_id):
+        self.cursor.execute("SELECT 1 FROM movie_people WHERE person_id = %s LIMIT 1;", (person_id,))
+        return self.cursor.fetchone()
+
+    
     # ----------------------------------------------
     # Insert
     # ----------------------------------------------
     def insert_movie_TMDB(self, movie, movie_ac):
+
+        
+
         try:
             self.cursor.execute("""
                 INSERT INTO movies (
@@ -280,6 +290,32 @@ class DBManager:
         if result:
             return result[0], result[1] # title, original_title
         return None
+    
+    def get_movie_directors(self, movie_id: int):
+        query = """
+            SELECT p.id, p.allocine_id, p.tmdb_id, p.name, p.profile_path
+            FROM movie_people mp
+            JOIN peoples p ON mp.person_id = p.id
+            WHERE mp.movie_id = %s AND mp.role_type = 'director'
+        """
+
+        self.cursor.execute(query, (movie_id,))
+        rows = self.cursor.fetchall()
+
+        directors = []
+
+        for row in rows:
+            director = Director(
+                id=row[0],
+                id_ac=row[1],
+                id_tmdb=row[2],
+                name=row[3],
+                profile_path=row[4]
+            )
+            directors.append(director)
+
+        return directors
+
 
         
     # ----------------------------------------------
@@ -372,13 +408,30 @@ class DBManager:
     # ----------------------------------------------
     # Delete
     # ----------------------------------------------
-    def delete_director(self, person_id):
-        """
-        Supprime une entrée de la table peoples.
-        """
+    def delete_people(self, person_id):
         try:
             self.cursor.execute("DELETE FROM peoples WHERE id = %s", (person_id,))
             self.conn.commit()
         except Exception as e:
             self.conn.rollback()
-            print(f"Erreur delete_director : {e}")
+            print(f"Erreur delete_people : {e}")
+
+    def delete_movie_people_wth_all(self, movie_id, person_id, role_type):
+        try:
+            query = "DELETE FROM movie_people WHERE movie_id = %s AND person_id = %s  AND role_type = %s"
+            self.cursor.execute(query, (movie_id, person_id, role_type))
+            self.conn.commit()
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Erreur delete movie_people : {e}")
+
+    def delete_movie_people_wth_movie(self, movie_id):
+        try:
+            query = "DELETE FROM movie_people WHERE movie_id = %s"
+            self.cursor.execute(query, (movie_id,))
+            self.conn.commit()
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Erreur delete movie_people : {e}")
