@@ -7,7 +7,8 @@ import json
 import csv
 
 from scrapers.TMDBFetcher import TMDBFetcher
-from scrapers.DBManager import DBManager
+# from scrapers.AlwaysDataManager import DBManager # AlwaysData
+from scrapers.SupabaseManager import DBManager # Supabase
 from classes.Film import Film
 from tools.tools import normalize_title
 from tools.tools import charge_directors_with_TMDB
@@ -34,20 +35,22 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
         overview = tmdb_movie_info['overview']
         popularity = tmdb_movie_info['popularity']
         poster_path = tmdb_movie_info['poster_path']
+        release_date = tmdb_movie_info['release_date']
         revenue = tmdb_movie_info['revenue']
         budget = tmdb_movie_info['budget']
+        runtime = tmdb_movie_info['runtime']
         vote_average = tmdb_movie_info['vote_average']
         vote_count = tmdb_movie_info['vote_count']
         languages = [lang.get("iso_639_1") for lang in tmdb_movie_info.get("spoken_languages", [])]
 
         # Extraction des titres de la Base
-        db_title, db_original_title = DB_Manager.get_movie_titles(id=id_db)
+        db_movie = DB_Manager.get_movie_info(id=id_db)
 
         # Vérification des Titres 
         norm_title = normalize_title(title)
         norm_original_title = normalize_title(original_title)
-        norm_db_title = normalize_title(db_title)
-        norm_db_original_title = normalize_title(db_original_title)
+        norm_db_title = normalize_title(db_movie.title)
+        norm_db_original_title = normalize_title(db_movie.original_title)
 
         valide = True
         if( norm_title != norm_db_title and norm_original_title != norm_db_original_title):
@@ -63,6 +66,11 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                 valide = False
 
         if valide:
+
+            overview = overview if overview not in (None, "") else db_movie.overview
+            release_date = db_movie.release_date if db_movie.release_date is not None else release_date
+            runtime = db_movie.runtime if db_movie.runtime is not None else runtime
+
             # Ajout des données TMDB
             DB_Manager.update_movie_TMDB(
                 movie_id=id_db,
@@ -72,8 +80,10 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                 overview=overview,
                 popularity=popularity,
                 poster_path=poster_path,
+                release_date=release_date,
                 revenue=revenue,
                 budget=budget,
+                runtime=runtime,
                 vote_average=vote_average,
                 vote_count=vote_count,
                 spoken_languages=languages

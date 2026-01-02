@@ -63,7 +63,9 @@ class DBManager:
     # ----------------------------------------------
     def insert_movie_TMDB(self, movie, movie_ac):
 
-        
+        overview = movie['overview'] if movie['overview'] is not None else movie_ac.overview
+        release_date = movie_ac.release_date if movie_ac.release_date is not None else movie['release_date']
+        runtime = movie_ac.runtime if movie_ac.runtime is not None else movie['runtime']
 
         try:
             self.cursor.execute("""
@@ -75,8 +77,8 @@ class DBManager:
                 RETURNING id
             """, (
                 movie_ac.allocine_id, movie['id'], movie['title'], movie['original_title'], movie['adult'], movie['original_language'],
-                movie['overview'], movie['popularity'], movie['poster_path'],
-                movie_ac.release_date, movie['revenue'], movie['budget'], movie_ac.runtime,
+                overview, movie['popularity'], movie['poster_path'],
+                release_date, movie['revenue'], movie['budget'], runtime,
                 movie['vote_average'], movie['vote_count'], [lang.get("iso_639_1") for lang in movie.get("spoken_languages", [])]
             ))
             movie_id = self.cursor.fetchone()[0]
@@ -268,28 +270,51 @@ class DBManager:
             return result[0]
         return None
     
-    def get_movie_titles(self, id=None, tmdb_id=None, allocine_id=None):
-        query = None
-        param = None
-
+    def get_movie_info(self, id=None, tmdb_id=None, allocine_id=None):
         if id is not None:
-            query = "SELECT title, original_title FROM movies WHERE id = %s"
+            query = "SELECT * FROM movies WHERE id = %s"
             param = (id,)
         elif tmdb_id is not None:
-            query = "SELECT title, original_title FROM movies WHERE tmdb_id = %s"
+            query = "SELECT * FROM movies WHERE tmdb_id = %s"
             param = (tmdb_id,)
         elif allocine_id is not None:
-            query = "SELECT title, original_title FROM movies WHERE allocine_id = %s"
+            query = "SELECT * FROM movies WHERE allocine_id = %s"
             param = (allocine_id,)
         else:
             return None
 
         self.cursor.execute(query, param)
-        result = self.cursor.fetchone()
+        row = self.cursor.fetchone()
 
-        if result:
-            return result[0], result[1] # title, original_title
-        return None
+        if not row:
+            return None
+
+        col_names = [desc[0] for desc in self.cursor.description]
+        movie_dict = dict(zip(col_names, row))
+
+        film = Film(
+            id=movie_dict["id"],
+            allocine_id=movie_dict["allocine_id"],
+            tmdb_id=movie_dict["tmdb_id"],
+            title=movie_dict["title"],
+            original_title=movie_dict["original_title"],
+            is_adult=movie_dict["is_adult"],
+            original_language=movie_dict["original_language"],
+            overview=movie_dict["overview"],
+            popularity=movie_dict["popularity"],
+            poster_path=movie_dict["poster_path"],
+            release_date=movie_dict["release_date"],
+            revenue=movie_dict["revenue"],
+            budget=movie_dict["budget"],
+            runtime=movie_dict["runtime"],
+            vote_average=movie_dict["vote_average"],
+            vote_count=movie_dict["vote_count"],
+            spoken_languages=movie_dict["spoken_languages"]
+        )
+
+        return film
+
+
     
     def get_movie_directors(self, movie_id: int):
         query = """
@@ -435,3 +460,5 @@ class DBManager:
         except Exception as e:
             self.conn.rollback()
             print(f"Erreur delete movie_people : {e}")
+
+    

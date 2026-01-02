@@ -146,7 +146,7 @@ CASCADE;
 INSERT INTO cinemas(name, address, image, wherefind, idallocine)
 VALUES
 ('Jeu de Paume', '1 Pl. de la Concorde 75001 Paris', NULL, 'allocine', 'W7588'),
--- ('UGC Ciné Cité Les Halles', '7 Place de la Rotonde 75001 Paris', NULL, 'allocine', 'C0159'),
+('UGC Ciné Cité Les Halles', '7 Place de la Rotonde 75001 Paris', NULL, 'allocine', 'C0159'),
 ('Grand Rex', '1 Bd Poissonnière, 75002 Paris', NULL, 'allocine', 'C0065'),
 ('Pathé BNP Paribas', 'Opéra Premier, 32 Rue Louis le Grand, 75002 Paris', NULL, 'allocine', 'C0060'),
 ('MK2 Beaubourg', '50 Rue Rambuteau, 75003 Paris', NULL, 'allocine', 'C0050'),

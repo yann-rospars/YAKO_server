@@ -9,7 +9,8 @@ import unicodedata
 from datetime import date, timedelta, datetime
 
 from scrapers.TMDBFetcher import TMDBFetcher
-from scrapers.DBManager import DBManager
+# from scrapers.AlwaysDataManager import DBManager # AlwaysData
+from scrapers.SupabaseManager import DBManager # Supabase
 from classes.Film import Film
 from classes.Director import Director
 from tools.tools import charge_directors_with_AC, compare_directors, charge_directors_with_TMDB
