@@ -86,6 +86,21 @@ CREATE TABLE movie_people (
     FOREIGN KEY (person_id) REFERENCES peoples(id)
 );
 
+-- Table des trailers
+CREATE TABLE movie_trailers (
+    id SERIAL PRIMARY KEY,
+    movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+    youtube_key TEXT NOT NULL UNIQUE,
+    trailer_type TEXT NOT NULL,  -- Trailer / Teaser / Behind the Scenes / Clip
+    language VARCHAR(10),        -- iso_639_1 (fr, en, es…)
+    region VARCHAR(5),           -- iso_3166_1 (FR, US…)
+    official BOOLEAN DEFAULT FALSE,
+    size INTEGER,                -- 720 / 1080 / 2160
+    published_at TIMESTAMP,      -- conservé pour sélection automatique
+    is_main BOOLEAN DEFAULT FALSE
+);
+
+
 --________________________________________________________________
 --________________________________________________________________
 

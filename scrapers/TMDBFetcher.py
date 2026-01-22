@@ -7,13 +7,19 @@ import regex as re
 from datetime import datetime
 
 from classes.Film import Film
+from classes.Trailer import Trailer
+from config.languages import SUPPORTED_LANGUAGES
+
 from tools.tools import normalize_title
+
 
 class TMDBFetcher:
     def __init__(self):
         self.api_TMDB_key = "987cbce1ac3db60be7ad5660f07b6b84"
 
-    # Récupère l'ID TMDB des films poteniellement identique (prend en compte : titre , date)
+    # --------------------------------------------------------
+    # Récupère les films tmdb poteniellement identique au film alllocine
+    # --------------------------------------------------------
     def get_potentials_movies_tmdb(self, movie_ac):
         potential_movies = []
         nb_pages = 1
@@ -53,7 +59,9 @@ class TMDBFetcher:
 
         return potential_movies
     
+    # --------------------------------------------------------
     # Récupère les données d'un films au format JSON
+    # --------------------------------------------------------
     def get_movie_details(self, movie_id):
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={self.api_TMDB_key}&append_to_response=credits&language=fr-FR"
 
@@ -77,4 +85,43 @@ class TMDBFetcher:
                     tmdb_names.append(name)
 
         return tmdb_names
+    
+    # --------------------------------------------------------
+    # Extrait la liste des trailer d'un film tmdb
+    # --------------------------------------------------------
+    def extract_tmdb_trailer(self, tmdb_id, vo):
+        trailers = []
 
+        for lang_code, lang_cfg in SUPPORTED_LANGUAGES.items():
+            tmdb_lang = lang_cfg["tmdb"]
+            if tmdb_lang == "vo?":
+                tmdb_lang = vo
+
+            url = f"http://api.themoviedb.org/3/movie/{tmdb_id}/videos?api_key={self.api_TMDB_key}&language={tmdb_lang}"
+            time.sleep(0.2) 
+            response = requests.get(url)
+
+            if response.status_code != 200:
+                raise Exception(f"Erreur lors de la récupération des trailer TMDB (code {response.status_code})")
+            
+            videos = response.json().get("results", [])
+            for video in videos:
+
+                # on ignore tout ce qui n'est pas YouTube
+                if video.get("site") != "YouTube":
+                    continue
+
+                # on ignore tout ce qui n'est pas un Trailer
+                if video.get("type") != "Trailer":
+                    continue
+
+                # vérifie la clef youtube
+                key = video.get("key")
+                if not key:
+                    continue
+
+                trailer = Trailer(None,tmdb_id,video.get("key"),video.get("type"),lang_code,video.get("iso_3166_1"),video.get("official", False),video.get("size"),video.get("published_at"),False)
+
+                trailers.append(trailer)
+
+        return trailers

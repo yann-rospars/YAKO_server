@@ -7,8 +7,7 @@ import json
 import csv
 
 from scrapers.TMDBFetcher import TMDBFetcher
-# from scrapers.AlwaysDataManager import DBManager # AlwaysData
-from scrapers.SupabaseManager import DBManager # Supabase
+from scrapers.SupabaseManager import DBManager
 from classes.Film import Film
 from tools.tools import normalize_title
 from tools.tools import charge_directors_with_TMDB
@@ -147,4 +146,8 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                         
                     DB_Manager.insert_movie_people(id_db,person_id,"director",None)
 
+            # Charge les Trailer associé au film
+            trailers = TMDB_Fetcher.extract_tmdb_trailer(id_tmdb,original_language)
+            for trailer in trailers:
+                DB_Manager.insert_trailer(trailer)
                         

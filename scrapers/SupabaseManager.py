@@ -291,6 +291,28 @@ class DBManager:
         except Exception as e:
             print(f"Error inserting session: {e}")
 
+    # -- Trailer
+    def insert_trailer(self, trailer):
+        try:
+            self.supabase.table("movie_trailers").upsert(
+                {
+                    "movie_id": trailer.movie_id,
+                    "youtube_key": trailer.youtube_key,
+                    "trailer_type": trailer.trailer_type,
+                    "language": trailer.language,
+                    "region": trailer.region,
+                    "official": trailer.official,
+                    "size": trailer.size,
+                    "published_at": trailer.published_at,
+                    "is_main": trailer.is_main
+                },
+                on_conflict="youtube_key"
+            ).execute()
+        except Exception as e:
+            print(f"Error inserting trailer: {e}")
+
+
+
     # ----------------------------------------------
     # GET Info
     # ----------------------------------------------

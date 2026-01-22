@@ -106,10 +106,10 @@ def add_movie_to_BD(movie_ac, directors):
     # --- selectionne le bon film
     for potenial_movie in potential_movies_tmdb:
         score = 0
-        data = TMDB_Fetcher.get_movie_details(potenial_movie.tmdb_id)
+        tmdb_movie_info = TMDB_Fetcher.get_movie_details(potenial_movie.tmdb_id)
 
         # Vérification du runtime
-        potenial_movie.runtime = data.get("runtime")
+        potenial_movie.runtime = tmdb_movie_info.get("runtime")
         if abs(potenial_movie.runtime - movie_ac.runtime) < 10:
             score+=1
 
@@ -121,7 +121,7 @@ def add_movie_to_BD(movie_ac, directors):
             score+=1
 
         # Vériication des directors
-        crew = data.get("credits", {}).get("crew", [])
+        crew = tmdb_movie_info.get("credits", {}).get("crew", [])
         tmdb_directors_names = TMDB_Fetcher.extract_tmdb_director_names(crew)
         ac_directors_names = [d.name for d in directors if d.name]
         score += compare_directors(ac_directors_names, tmdb_directors_names)
@@ -150,7 +150,7 @@ def add_movie_to_BD(movie_ac, directors):
             print(f"Charge avec TMDB")
 
             # Recup les info TMDB du film
-            tmdb_movie_info = TMDB_Fetcher.get_movie_details(movie_tmdb.tmdb_id)
+            # tmdb_movie_info = TMDB_Fetcher.get_movie_details(movie_tmdb.tmdb_id)
 
             # Charge le film
             movie_id = DB_Manager.insert_movie_TMDB(tmdb_movie_info,movie_ac)
@@ -168,7 +168,7 @@ def add_movie_to_BD(movie_ac, directors):
                     DB_Manager.insert_production_company(production_companie['id'],production_companie['logo_path'],production_companie['name'])
                 DB_Manager.insert_movie_production_company(movie_id, production_companie['id'])
 
-            # Charge les Personnes associé au film
+            # Charge les Director associé au film (logique importante)
             for director in directors:
                 if (director.id_tmdb is not None):
                     if(director.id_ac is not None):
@@ -177,14 +177,18 @@ def add_movie_to_BD(movie_ac, directors):
 
                         if person_id_1 is None and person_id_2 is None: # Le director n'est pas dans la BD
                             person_id = DB_Manager.insert_people(director.id_tmdb,director.id_ac,director.name,director.profile_path)
+
                         elif person_id_1 is not None and person_id_2 is None: # Le director est dans la BD avec l'id TMDB
                             person_id = person_id_1
                             DB_Manager.update_people(person_id,allocine_id=director.id_ac)
+
                         elif person_id_2 is not None and person_id_1 is None: # Le director est dans la BD avec l'id Allocine
                             person_id = person_id_2
                             DB_Manager.update_people(person_id,tmdb_id=director.id_tmdb,profile_path=director.profile_path)
+
                         elif person_id_2 == person_id_1 : # Le directeur est déjà entier dans la BD
                             person_id = person_id_1
+
                         else : # Il y'a deux version du director dans la BD (On garde le people chargé avec TMDB)
                             person_id = person_id_1
                             DB_Manager.update_people(person_id,allocine_id=director.id_ac)
@@ -200,10 +204,16 @@ def add_movie_to_BD(movie_ac, directors):
                         
                     DB_Manager.insert_movie_people(movie_id,person_id,"director",None)
 
+            # Charge les Acteurs associé au film
             # for cast in tmdb_movie_info['credits']['cast'][:5]:
             #     if not DB_Manager.people_exists(cast['id']):
             #         DB_Manager.insert_people(cast['id'],cast['name'],cast['profile_path'])
             #     DB_Manager.insert_movie_people(movie_id,cast['id'], "actor",cast['character'])
+
+            # Charge les Trailer associé au film
+            trailers = TMDB_Fetcher.extract_tmdb_trailer(movie_tmdb.tmdb_id,movie_tmdb.original_language)
+            for trailer in trailers:
+                DB_Manager.insert_trailer(trailer)
 
     else:
         print(f"Charge avec AC")
@@ -214,7 +224,7 @@ def add_movie_to_BD(movie_ac, directors):
         # charge le Director
         for director in directors:
             if(director.id_ac is not None):
-                person_id_2 = DB_Manager.get_people_id(None, director.id_ac, None)  
+                person_id_2 = DB_Manager.get_people_id(None, None, director.id_ac)  
                 if person_id_2 is None : # Le director n'est pas dans la BD
                     person_id = DB_Manager.insert_people(None,director.id_ac,director.name,None)
                 else :

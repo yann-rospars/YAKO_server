@@ -97,16 +97,23 @@ def charge_directors_with_TMDB(directors, crew):
 # Compare deux liste de nom (de director par exemple)
 # --------------------------------------------------------
 def compare_directors(ac_list, tmdb_list):
-    ac_set   = {normalize_name(n) for n in ac_list if n}
-    tmdb_set = {normalize_name(n) for n in tmdb_list if n}
+    ac_set   = {normalize_name(n) for n in (ac_list or []) if n}
+    tmdb_set = {normalize_name(n) for n in (tmdb_list or []) if n}
 
+    # cas 1 : une liste est vide ou les deux
+    if not ac_set or not tmdb_set:
+        return -5
+
+    # cas 2 : parfaitement similaire
     if ac_set == tmdb_set:
         return 1
 
+    # cas 3 : inclusion (match partiel crédible)
     if ac_set.issubset(tmdb_set) or tmdb_set.issubset(ac_set):
         return 0
 
-    return -5 # il y'a trop de différences
+    # cas 4 : non vides et trop différents
+    return -5
 
 # --------------------------------------------------------
 # Normalise un Titre

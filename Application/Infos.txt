@@ -1,0 +1,89 @@
+_________________________________________________
+Faire dans le terminal : (creation et lancement)
+
+npm install -g expo-cli
+npx create-expo-app yako --template expo-template-blank-typescript
+cd yako
+npx expo start (ou) npx expo start --tunnel
+
+
+_________________________________________________
+Architeture :
+
+yako/
+├── App.tsx
+├── src/
+│   ├── lib/
+│   │   └── supabase.ts        ← connexion Supabase (UNE fois)
+│   ├── services/
+│   │   ├── movies.service.ts  ← requêtes films
+│   │   ├── sessions.service.ts
+│   │   └── cinemas.service.ts
+│   ├── screens/
+│   │   ├── HomeScreen.tsx
+│   │   ├── MovieScreen.tsx
+│   │   └── SessionsScreen.tsx
+│   ├── components/
+│   │   ├── MovieCard.tsx
+│   │   └── Loading.tsx
+│   ├── navigation/
+│   │   └── RootNavigator.tsx
+│   └── types/
+│       └── movie.ts
+├── .env
+└── package.json
+
+lib/
+Contient les outils techniques globaux de l’application.
+On y met ce qui doit être initialisé une seule fois et réutilisé partout (ex : client Supabase, config globale).
+Aucun écran, aucune UI ici.
+
+services/
+Contient toute la logique d’accès aux données.
+Chaque fichier correspond à un “domaine” (films, séances, cinémas…).
+Les écrans appellent les services, et les services parlent à Supabase.
+Équivalent du DBManager côté backend.
+
+screens/
+Contient les écrans complets de l’application.
+Un screen = une page visible par l’utilisateur.
+Les screens gèrent l’affichage et appellent les services pour récupérer les données.
+
+components/
+Contient les composants UI réutilisables.
+Ce sont des briques visuelles (cartes, boutons, loaders, listes…).
+Ils ne connaissent pas la base de données et ne contiennent pas de logique métier lourde.
+
+navigation/
+Contient toute la logique de navigation de l’application.
+Gère les onglets, les écrans, le bouton retour et la structure globale.
+Aucun contenu métier, uniquement les routes.
+
+types/
+Contient les définitions TypeScript des données.
+Définit la forme des objets (Movie, Session, Cinema…).
+Sert de contrat entre services, composants et écrans pour éviter les erreurs.
+
+_____________________________________________________
+Navigation :
+
+BottomTabs
+│
+├── HomeStack
+│   ├── HomeScreen
+│   └── MovieDetailScreen
+│
+├── Listes
+├── Amis
+└── Compte
+
+_____________________________
+Ajout de :
+
+npm install @react-navigation/native
+npx expo install react-native-screens react-native-safe-area-context
+npm install @react-navigation/bottom-tabs
+npm install @react-navigation/native-stack
+
+
+
