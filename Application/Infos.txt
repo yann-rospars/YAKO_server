@@ -78,12 +78,20 @@ BottomTabs
 └── Compte
 
 _____________________________
-Ajout de :
+Ajout de : (0.0)
 
 npm install @react-navigation/native
 npx expo install react-native-screens react-native-safe-area-context
 npm install @react-navigation/bottom-tabs
 npm install @react-navigation/native-stack
+npm install @react-navigation/core
+npx expo install react-native-webview
+npx expo install expo-notifications
 
-
+_____________________________
+Ajout de : (0.1)
+npm install @supabase/supabase-js
+npm install @react-native-async-storage/async-storage
+npm install expo-auth-session expo-web-browser
+npm install react-native-safe-area-context
 

@@ -14,6 +14,7 @@ from scrapers.SupabaseManager import DBManager # Supabase
 from classes.Film import Film
 from classes.Director import Director
 from tools.tools import charge_directors_with_AC, compare_directors, charge_directors_with_TMDB
+from config.languages import SUPPORTED_LANGUAGES
 
 TMDB_Fetcher = TMDBFetcher()
 DB_Manager = DBManager()
@@ -120,7 +121,7 @@ def add_movie_to_BD(movie_ac, directors):
         if(dayDiff < 180):
             score+=1
 
-        # Vériication des directors
+        # Vérification des directors
         crew = tmdb_movie_info.get("credits", {}).get("crew", [])
         tmdb_directors_names = TMDB_Fetcher.extract_tmdb_director_names(crew)
         ac_directors_names = [d.name for d in directors if d.name]
@@ -212,8 +213,52 @@ def add_movie_to_BD(movie_ac, directors):
 
             # Charge les Trailer associé au film
             trailers = TMDB_Fetcher.extract_tmdb_trailer(movie_tmdb.tmdb_id,movie_tmdb.original_language)
-            for trailer in trailers:
-                DB_Manager.insert_trailer(trailer)
+
+            main_trailer = { # Liste des main trailers
+                lang_code: None
+                for lang_code in SUPPORTED_LANGUAGES.keys()
+            }
+
+            for trailer in trailers: # remplies la liste des main trailers
+                best_trailer = main_trailer[trailer.language]
+                
+                # verif Null
+                if best_trailer is None :
+                    main_trailer[trailer.language] = trailer
+                    continue
+
+                # verif Officiel
+                if trailer.official and not best_trailer.official :
+                    main_trailer[trailer.language] = trailer
+                    continue
+                if best_trailer.official and not trailer.official :
+                    continue
+
+                # verif Size
+                if trailer.size >= 1080 and best_trailer.size < 1080 :
+                    main_trailer[trailer.language] = trailer
+                    continue
+                if best_trailer.size >= 1080 and trailer.size < 1080 :
+                    continue
+
+                # Choix via date
+                if trailer.published_at and best_trailer.published_at:
+                    trailer_date = datetime.fromisoformat(trailer.published_at.replace("Z", "+00:00"))
+                    best_date = datetime.fromisoformat(best_trailer.published_at.replace("Z", "+00:00"))
+
+                    if trailer_date > best_date:
+                        main_trailer[trailer.language] = trailer
+                        continue
+
+            
+            for trailer in trailers: # insertion des trailers
+                if main_trailer[trailer.language] == trailer:
+                    trailer.is_main = True
+                else:
+                    trailer.is_main = False
+
+                DB_Manager.insert_trailer(trailer, movie_id)
+
 
     else:
         print(f"Charge avec AC")

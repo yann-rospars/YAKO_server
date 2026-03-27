@@ -136,6 +136,7 @@ class DBManager:
                 "overview": overview,
                 "popularity": movie["popularity"],
                 "poster_path": movie["poster_path"],
+                "backdrop_path": movie["backdrop_path"],
                 "release_date": release_date,
                 "revenue": movie["revenue"],
                 "budget": movie["budget"],
@@ -292,11 +293,11 @@ class DBManager:
             print(f"Error inserting session: {e}")
 
     # -- Trailer
-    def insert_trailer(self, trailer):
+    def insert_trailer(self, trailer, movie_id):
         try:
             self.supabase.table("movie_trailers").upsert(
                 {
-                    "movie_id": trailer.movie_id,
+                    "movie_id": movie_id,
                     "youtube_key": trailer.youtube_key,
                     "trailer_type": trailer.trailer_type,
                     "language": trailer.language,
@@ -573,6 +574,7 @@ class DBManager:
 
         except Exception as e:
             print(f"Erreur update_movie_people : {e}")
+
 
     # ----------------------------------------------
     # Delete

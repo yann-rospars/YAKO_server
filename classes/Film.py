@@ -1,7 +1,7 @@
 import unicodedata
 
 class Film:
-    def __init__(self, id, allocine_id, tmdb_id, title, original_title, is_adult, original_language, overview, popularity, poster_path, release_date, revenue, budget, runtime, vote_average, vote_count, spoken_languages):
+    def __init__(self, id, allocine_id, tmdb_id, title, original_title, is_adult, original_language, overview, popularity, poster_path, backdrop_path, release_date, revenue, budget, runtime, vote_average, vote_count, spoken_languages):
         self.id = id
         self.allocine_id = allocine_id
         self.tmdb_id = tmdb_id
@@ -12,6 +12,7 @@ class Film:
         self.overview = overview
         self.popularity = popularity
         self.poster_path = poster_path
+        self.backdrop_path = backdrop_path
         self.release_date = release_date
         self.revenue = revenue
         self.budget = budget
@@ -30,7 +31,8 @@ class Film:
             f"runtime={self.runtime}, "
             f"allocine_id={self.allocine_id}, "
             f"tmdb_id={self.tmdb_id}, "
-            f"poster_path='{self.poster_path}'"
+            f"poster_path='{self.poster_path}', "
+            f"poster_path='{self.backdrop_path}'"
             ")"
         )
     
@@ -49,6 +51,7 @@ class Film:
             overview=tmdb_data.get("overview"),
             popularity=tmdb_data.get("popularity"),
             poster_path=tmdb_data.get("poster_path"),
+            backdrop_path=tmdb_data.get("backdrop_path"),
             release_date=tmdb_data.get("release_date"),
             revenue=None,
             budget=None,
@@ -153,5 +156,6 @@ class Film:
             spoken_languages=None,
 
             popularity=None,
-            poster_path=poster_path
+            poster_path=poster_path,
+            backdrop_path=None
         )

@@ -6,11 +6,15 @@ import requests
 import json
 import csv
 
+from datetime import datetime
+
+
 from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.SupabaseManager import DBManager
 from classes.Film import Film
 from tools.tools import normalize_title
 from tools.tools import charge_directors_with_TMDB
+from config.languages import SUPPORTED_LANGUAGES
 
 
 TMDB_Fetcher = TMDBFetcher()
@@ -145,9 +149,51 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                             person_id = person_id_1
                         
                     DB_Manager.insert_movie_people(id_db,person_id,"director",None)
-
+                    
+                        
             # Charge les Trailer associé au film
             trailers = TMDB_Fetcher.extract_tmdb_trailer(id_tmdb,original_language)
-            for trailer in trailers:
-                DB_Manager.insert_trailer(trailer)
-                        
+
+            main_trailer = { # Liste des main trailers
+                lang_code: None
+                for lang_code in SUPPORTED_LANGUAGES.keys()
+            }
+
+            for trailer in trailers: # remplies la liste des main trailers
+                best_trailer = main_trailer[trailer.language]
+                
+                # verif Null
+                if best_trailer is None :
+                    main_trailer[trailer.language] = trailer
+                    continue
+
+                # verif Officiel
+                if trailer.official and not best_trailer.official :
+                    main_trailer[trailer.language] = trailer
+                    continue
+                if best_trailer.official and not trailer.official :
+                    continue
+
+                # verif Size
+                if trailer.size >= 1080 and best_trailer.size < 1080 :
+                    main_trailer[trailer.language] = trailer
+                    continue
+                if best_trailer.size >= 1080 and trailer.size < 1080 :
+                    continue
+
+                # Choix via date
+                if trailer.published_at and best_trailer.published_at:
+                    trailer_date = datetime.fromisoformat(trailer.published_at.replace("Z", "+00:00"))
+                    best_date = datetime.fromisoformat(best_trailer.published_at.replace("Z", "+00:00"))
+
+                    if trailer_date > best_date:
+                        main_trailer[trailer.language] = trailer
+                        continue
+            
+            for trailer in trailers: # insertion des trailers
+                if main_trailer[trailer.language] == trailer:
+                    trailer.is_main = True
+                else:
+                    trailer.is_main = False
+
+                DB_Manager.insert_trailer(trailer, id_db)
