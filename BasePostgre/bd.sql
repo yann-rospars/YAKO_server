@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS movies (
     vote_average REAL,
     vote_count INTEGER,
     spoken_languages TEXT[],
+    valid_mapping BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

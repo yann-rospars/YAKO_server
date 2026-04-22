@@ -1,4 +1,6 @@
 import unicodedata
+import re
+
 
 class Film:
     def __init__(self, id, allocine_id, tmdb_id, title, original_title, is_adult, original_language, overview, popularity, poster_path, backdrop_path, release_date, revenue, budget, runtime, vote_average, vote_count, spoken_languages):
@@ -108,6 +110,15 @@ class Film:
             # on prend la plus ancienne
             if released_dates:
                 release_date = min(released_dates)
+                
+                if re.fullmatch(r"\d{4}", release_date): # YYYY
+                    release_date = f"{release_date}-01-01"
+                elif re.fullmatch(r"\d{4}-\d{2}", release_date): # YYYY-MM
+                    release_date = f"{release_date}-01"
+                elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", release_date): # YYYY-MM-DD
+                    pass
+                else:
+                    release_date = None
 
         # --- Extraction du runtime ---
         runtime_str = allocine_data.get("runtime")

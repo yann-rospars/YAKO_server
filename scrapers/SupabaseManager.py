@@ -31,6 +31,17 @@ class DBManager:
             .execute()
         )
         return len(res.data) > 0
+    
+    def movie_exists_tmdbid(self, tmdb_id):
+        res = (
+            self.supabase
+            .table("movies")
+            .select("tmdb_id")
+            .eq("tmdb_id", tmdb_id)
+            .limit(1)
+            .execute()
+        )
+        return len(res.data) > 0
 
     def genre_exists(self, genre_name):
         res = (
@@ -102,47 +113,54 @@ class DBManager:
             return (res.data[0]["id"],)
         return None
 
-    def movie_people_exists_wth_person(self, person_id):
+    def movie_people_exists(self, movie_id, person_id, role_type):
         res = (
             self.supabase
             .table("movie_people")
-            .select("person_id")
+            .select("movie_id")
+            .eq("movie_id", movie_id)
             .eq("person_id", person_id)
+            .eq("role_type", role_type)
             .limit(1)
             .execute()
         )
-        if res.data:
-            return (res.data[0]["person_id"],)
-        return None
+
+        return bool(res.data)
 
     # ----------------------------------------------
     # Insert
     # ----------------------------------------------
-
     def insert_movie_TMDB(self, movie, movie_ac):
 
-        overview = movie['overview'] if movie['overview'] is not None else movie_ac.overview
-        release_date = movie_ac.release_date if movie_ac.release_date is not None else movie['release_date']
-        runtime = movie_ac.runtime if movie_ac.runtime is not None else movie['runtime']
+        if movie_ac is not None :
+            overview = movie.get('overview') or movie_ac.overview
+            release_date = movie_ac.release_date or movie.get('release_date')
+            runtime = movie_ac.runtime or movie.get('runtime')
+            allocine_id = movie_ac.allocine_id
+        else :
+            overview = movie.get('overview')
+            release_date = movie.get('release_date')
+            runtime = movie.get('runtime')
+            allocine_id = None
 
         try:
             data = {
-                "allocine_id": movie_ac.allocine_id,
-                "tmdb_id": movie["id"],
-                "title": movie["title"],
-                "original_title": movie["original_title"],
-                "is_adult": movie["adult"],
-                "original_language": movie["original_language"],
+                "allocine_id": allocine_id,
+                "tmdb_id": movie.get("id"),
+                "title": movie.get("title"),
+                "original_title": movie.get("original_title"),
+                "is_adult": movie.get("adult"),
+                "original_language": movie.get("original_language"),
                 "overview": overview,
-                "popularity": movie["popularity"],
-                "poster_path": movie["poster_path"],
-                "backdrop_path": movie["backdrop_path"],
+                "popularity": movie.get("popularity"),
+                "poster_path": movie.get("poster_path"),
+                "backdrop_path": movie.get("backdrop_path"),
                 "release_date": release_date,
-                "revenue": movie["revenue"],
-                "budget": movie["budget"],
+                "revenue": movie.get("revenue"),
+                "budget": movie.get("budget"),
                 "runtime": runtime,
-                "vote_average": movie["vote_average"],
-                "vote_count": movie["vote_count"],
+                "vote_average": movie.get("vote_average"),
+                "vote_count": movie.get("vote_count"),
                 "spoken_languages": [
                     lang.get("iso_639_1")
                     for lang in movie.get("spoken_languages", [])
@@ -494,6 +512,32 @@ class DBManager:
             print(f"Erreur lors de la récupération des réalisateurs : {e}")
             return []
 
+
+    # Tout les ID des Films sans id TMDB
+    def get_movies_without_tmdb_id(self):
+        try:
+            res = (
+                self.supabase
+                .table("movies")
+                .select("""
+                    id,
+                    title,
+                    original_title,
+                    overview,
+                    poster_path,
+                    release_date,
+                    runtime
+                """)
+                .is_("tmdb_id", None)
+                .execute()
+            )
+
+            return res.data if res.data else []
+
+        except Exception as e:
+            print(f"Erreur récupération films sans tmdb_id : {e}")
+            return []
+        
     # ----------------------------------------------
     # Update
     # ----------------------------------------------

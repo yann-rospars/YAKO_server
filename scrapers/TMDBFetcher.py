@@ -3,6 +3,7 @@
 import requests
 import time
 import regex as re
+import math
 
 from datetime import datetime
 
@@ -16,6 +17,7 @@ from tools.tools import normalize_title
 class TMDBFetcher:
     def __init__(self):
         self.api_TMDB_key = "987cbce1ac3db60be7ad5660f07b6b84"
+        self.Number_Of_Movies_Per_Page = 20
 
     # --------------------------------------------------------
     # Récupère les films tmdb poteniellement identique au film alllocine
@@ -54,7 +56,7 @@ class TMDBFetcher:
 
                         dayDiff = abs((date_ac - date_tmdb).days)
 
-                        if(dayDiff < 1095): # 3ans
+                        if(dayDiff < 1095): # 3 ans
                             potential_movies.append(movie_tmdb)         
 
         return potential_movies
@@ -64,7 +66,6 @@ class TMDBFetcher:
     # --------------------------------------------------------
     def get_movie_details(self, movie_id):
         url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={self.api_TMDB_key}&append_to_response=credits&language=fr-FR"
-
         time.sleep(0.2) 
         response = requests.get(url)
         if response.status_code != 200:
@@ -125,3 +126,63 @@ class TMDBFetcher:
                 trailers.append(trailer)
 
         return trailers
+    
+    # --------------------------------------------------------
+    # Extrait la liste des n Films les plus populaires d'une année
+    # --------------------------------------------------------
+    def get_most_popular_movies_id(self, start_year, end_year, n):
+        all_movies = []
+        seen = set()
+
+        for year in range(start_year, end_year + 1):
+            print(f"Fetching year {year}...")
+
+            # Temporaire 
+            if year < 1950 :
+                n = 10
+            elif year < 1980 : 
+                n = 50
+            else :
+                n = 100
+
+            last_page = math.ceil(n / self.Number_Of_Movies_Per_Page)
+            total_pages = 1
+            current_page = 1
+            count_year = 0
+
+            while current_page <= last_page and current_page <= total_pages:
+
+                url = f"https://api.themoviedb.org/3/discover/movie?api_key={self.api_TMDB_key}&language=fr-FR&primary_release_year={year}&sort_by=popularity.desc&page={current_page}"
+                
+                try:
+                    time.sleep(0.1)
+                    response = requests.get(url, timeout=5)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException as e:
+                    print(f"Erreur TMDB année {year}, page {current_page}: {e}")
+                    break
+
+                data = response.json()
+                movies = data.get("results", [])
+
+                if current_page == 1:
+                    total_pages = min(data.get("total_pages", 1), 500)
+
+                for movie in movies:
+                    movie_id = movie['id']
+
+                    # anti-doublon global (optionnel mais recommandé)
+                    if movie_id not in seen:
+                        seen.add(movie_id)
+                        all_movies.append(movie_id)
+                        count_year += 1
+
+                        if count_year >= n:
+                            break
+
+                if count_year >= n:
+                    break
+
+                current_page += 1
+
+        return all_movies
