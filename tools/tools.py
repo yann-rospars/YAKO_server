@@ -104,7 +104,12 @@ def charge_directors_with_TMDB(directors, crew):
 # Methode de jointure et d'ajout des directors AC et TMDB
 # --------------------------------------------------------
 def charge_directors_AC_TMDB(DB_Manager, directors, movie_id):
+
     for director in directors: # Pour chaque director 
+
+        if (director.id is not None) :
+            if not DB_Manager.movie_people_exists_wth_person(director.id):
+                DB_Manager.delete_people(director.id)
 
         if (director.id_tmdb is not None): # Verifie si le director existe dans TMDB
             if(director.id_ac is not None): # Verifie si le director existe dans AC
@@ -144,6 +149,7 @@ def charge_directors_AC_TMDB(DB_Manager, directors, movie_id):
             # Ajout de la liaison Movie-Director si besoin
             if not DB_Manager.movie_people_exists(movie_id,person_id,"director"):
                 DB_Manager.insert_movie_people(movie_id,person_id,"director",None)
+
 
 # --------------------------------------------------------
 # Compare deux liste de nom (de director par exemple)

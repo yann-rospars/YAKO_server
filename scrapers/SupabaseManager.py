@@ -126,6 +126,18 @@ class DBManager:
         )
 
         return bool(res.data)
+    
+    def movie_people_exists_wth_person(self, person_id):
+        res = (
+            self.supabase
+            .table("movie_people")
+            .select("person_id")
+            .eq("person_id", person_id)
+            .limit(1)
+            .execute()
+        )
+
+        return bool(res.data)
 
     # ----------------------------------------------
     # Insert
@@ -464,6 +476,7 @@ class DBManager:
                 overview=movie_dict["overview"],
                 popularity=movie_dict["popularity"],
                 poster_path=movie_dict["poster_path"],
+                backdrop_path=movie_dict["backdrop_path"],
                 release_date=movie_dict["release_date"],
                 revenue=movie_dict["revenue"],
                 budget=movie_dict["budget"],
@@ -540,15 +553,16 @@ class DBManager:
         
     # ----------------------------------------------
     # Update
-    # ----------------------------------------------
-
+    # ----------------------------------------------   
     def update_movie_TMDB(self, movie_id, **kwargs):
         try:
             valid_columns = [
                 "allocine_id", "tmdb_id", "title", "original_title", "is_adult",
                 "original_language", "overview", "en_overview", "popularity",
-                "poster_path", "release_date", "revenue", "budget", "runtime",
-                "vote_average", "vote_count", "spoken_languages"
+                "poster_path", "backdrop_path",
+                "release_date", "revenue", "budget", "runtime",
+                "vote_average", "vote_count", "spoken_languages",
+                "valid_mapping"
             ]
 
             # On garde uniquement les champs valides et non None

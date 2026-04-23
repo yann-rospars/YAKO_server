@@ -13,23 +13,30 @@ from scrapers.TMDBFetcher import TMDBFetcher
 from scrapers.SupabaseManager import DBManager
 from classes.Film import Film
 from tools.tools import normalize_title
-from tools.tools import charge_directors_with_TMDB
+from tools.tools import charge_directors_with_TMDB, charge_directors_AC_TMDB
 from config.languages import SUPPORTED_LANGUAGES
-
 
 TMDB_Fetcher = TMDBFetcher()
 DB_Manager = DBManager()
 
 
 # ------------------------------------------------------------------------------
-with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", newline="", encoding="utf-8") as f:
+with open("C:/Users/yannb/Documents/Yako/manual_loading/missing_tmdb_movies.csv", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f, delimiter=";")
+    movies_checked =[]
 
     for row in reader:
-        id_db = row["DB ID"]
-        id_tmdb = row["TMDB ID"]
+        id_db = int(row["movie_id"])
+        id_tmdb = row["tmdb_id"]
 
         # Extraction des données TMDB
+        if(id_tmdb == "0"):
+            DB_Manager.update_movie_TMDB(id_db, valid_mapping=True)
+            movies_checked.append(id_db)
+            continue
+        elif(id_tmdb == "" or id_tmdb is None):
+            continue
+
         tmdb_movie_info = TMDB_Fetcher.get_movie_details(id_tmdb)
         original_title = tmdb_movie_info['original_title']
         title = tmdb_movie_info["title"]
@@ -38,6 +45,7 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
         overview = tmdb_movie_info['overview']
         popularity = tmdb_movie_info['popularity']
         poster_path = tmdb_movie_info['poster_path']
+        backdrop_path = tmdb_movie_info['backdrop_path']
         release_date = tmdb_movie_info['release_date']
         revenue = tmdb_movie_info['revenue']
         budget = tmdb_movie_info['budget']
@@ -63,13 +71,14 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
             print(f"DB Allociné title : {norm_db_title}")
             print(f"DB original       : {norm_db_original_title}")
             
-            choix = input("Valider malgré tout ? (yes/no) : ").strip().lower()
+            choix = input("Valider malgré tout ? (y/n) : ").strip().lower()
 
-            if choix != "yes":
+            if choix != "y":
                 valide = False
+                print("Film non traié !")
 
         if valide:
-
+            movies_checked.append(id_db)
             overview = overview if overview not in (None, "") else db_movie.overview
             release_date = db_movie.release_date if db_movie.release_date is not None else release_date
             runtime = db_movie.runtime if db_movie.runtime is not None else runtime
@@ -83,13 +92,15 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                 overview=overview,
                 popularity=popularity,
                 poster_path=poster_path,
+                backdrop_path=backdrop_path,
                 release_date=release_date,
                 revenue=revenue,
                 budget=budget,
                 runtime=runtime,
                 vote_average=vote_average,
                 vote_count=vote_count,
-                spoken_languages=languages
+                spoken_languages=languages,
+                valid_mapping=True
             )
 
             # Charge les Genres du film
@@ -105,51 +116,13 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                     DB_Manager.insert_production_company(production_companie['id'],production_companie['logo_path'],production_companie['name'])
                 DB_Manager.insert_movie_production_company(id_db, production_companie['id'])
 
-            # Charge les Personnes associé au film
+            # Charge les Realisateurs associés au film
             crew = tmdb_movie_info.get("credits", {}).get("crew", [])
             directors = DB_Manager.get_movie_directors(id_db)
-            directors = charge_directors_with_TMDB(directors, crew)
+            directors = charge_directors_with_TMDB(directors, crew) # mapp les directors des deux sources
 
             DB_Manager.delete_movie_people_wth_movie(id_db) # Supprime tout les liens du film avec les personnes
-
-            for director in directors:
-
-                # Suprime si le directeur est sans lien avec des film
-                if(director.id_ac is not None):
-                    if not DB_Manager.movie_people_exists_wth_person(director.id):
-                        DB_Manager.delete_people(director.id)
-
-                # On charge les réalisateurs
-                if (director.id_tmdb is not None):
-                    if(director.id_ac is not None):
-                        person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)     
-                        person_id_2 = DB_Manager.get_people_id(None, None, director.id_ac)
-
-                        if person_id_1 is None and person_id_2 is None: # Le director n'est pas dans la BD
-                            person_id = DB_Manager.insert_people(director.id_tmdb,director.id_ac,director.name,director.profile_path)
-                        elif person_id_1 is not None and person_id_2 is None: # Le director est dans la BD avec l'id TMDB
-                            person_id = person_id_1
-                            DB_Manager.update_people(person_id,allocine_id=director.id_ac)
-                        elif person_id_2 is not None and person_id_1 is None: # Le director est dans la BD avec l'id Allocine
-                            person_id = person_id_2
-                            DB_Manager.update_people(person_id,tmdb_id=director.id_tmdb,profile_path=director.profile_path)
-                        elif person_id_2 == person_id_1 : # Le directeur est déjà entier dans la BD
-                            person_id = person_id_1
-                        else : # Il y'a deux version du director dans la BD (On garde le people chargé avec TMDB)
-                            person_id = person_id_1
-                            DB_Manager.update_people(person_id,allocine_id=director.id_ac)
-                            DB_Manager.update_movie_people_director(person_id_2,person_id) # (old, new)
-                            DB_Manager.delete_director(person_id_2)
-
-                    else :
-                        person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)  
-                        if person_id_1 is None : # Le director n'est pas dans la BD
-                            person_id = DB_Manager.insert_people(director.id_tmdb,None,director.name,director.profile_path)
-                        else :
-                            person_id = person_id_1
-                        
-                    DB_Manager.insert_movie_people(id_db,person_id,"director",None)
-                    
+            charge_directors_AC_TMDB(DB_Manager,directors,id_db)                    
                         
             # Charge les Trailer associé au film
             trailers = TMDB_Fetcher.extract_tmdb_trailer(id_tmdb,original_language)
@@ -197,3 +170,26 @@ with open("C:/Users/yannb/Documents/Yako/manual_loading/mapping_movies.csv", new
                     trailer.is_main = False
 
                 DB_Manager.insert_trailer(trailer, id_db)
+
+    # ------------------------------------------------------------
+    # Nettoyage du CSV (suppression des films traités)
+    # ------------------------------------------------------------
+    input_path = "C:/Users/yannb/Documents/Yako/manual_loading/missing_tmdb_movies.csv"
+
+    with open(input_path, newline="", encoding="utf-8") as infile:
+        reader = csv.DictReader(infile, delimiter=";")
+        fieldnames = reader.fieldnames
+
+        # On garde uniquement les lignes non traitées
+        remaining_rows = [
+            row for row in reader
+            if int(row["movie_id"]) not in movies_checked
+        ]
+
+    # Réécriture du même fichier
+    with open(input_path, mode="w", newline="", encoding="utf-8") as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+        writer.writerows(remaining_rows)
+
+    print("CSV nettoyé directement")
