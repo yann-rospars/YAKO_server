@@ -67,8 +67,47 @@ export default function AuthScreen({ setAuthFlow }: any) {
   }
 
   // 🔹 VERIFY OTP
+  // const verifyOtp = async () => {
+  //   const { data, error } = await supabase.auth.verifyOtp({
+  //     email,
+  //     token: otp,
+  //     type: 'email',
+  //   })
+
+  //   if (error) {
+  //     alert(error.message)
+  //     return
+  //   }
+
+  //   // Récupère le user connecté
+  //   const user = data.user
+  //   if (!user) {
+  //     alert("Erreur récupération utilisateur")
+  //     return
+  //   }
+
+  //   // Marquer comme vérifié
+  //   const { error: updateError } = await supabase
+  //     .from('users')
+  //     .update({ is_verified: true })
+  //     .eq('id', user.id)
+
+  //   if (updateError) {
+  //     console.error(updateError)
+  //     alert("Erreur mise à jour vérification")
+  //     return
+  //   }
+
+  //   // SIGNUP → onboarding
+  //   if (mode === 'signup') return
+
+  //   // FORGOT → reset password
+  //   if (mode === 'forgot') {
+  //     setAuthFlow('reset')
+  //   }
+  // }
   const verifyOtp = async () => {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: otp,
       type: 'email',
@@ -79,10 +118,56 @@ export default function AuthScreen({ setAuthFlow }: any) {
       return
     }
 
-    // SIGNUP → App redirige automatiquement vers onboarding
-    if (mode === 'signup') return
+    const user = data.user
+    if (!user) {
+      alert("Erreur récupération utilisateur")
+      return
+    }
 
-    // FORGOT → redirection vers ResetPasswordScreen
+    // Marquer comme vérifié
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ is_verified: true })
+      .eq('id', user.id)
+
+    if (updateError) {
+      console.error(updateError)
+      alert("Erreur mise à jour vérification")
+      return
+    }
+
+    // UNIQUEMENT pour signup → créer les listes
+    if (mode === 'signup') {
+      const { error: listError } = await supabase
+        .from('lists')
+        .upsert(
+          [
+            {
+              user_id: user.id,
+              name: 'Déjà notées',
+              type: 'system',
+              is_public: false,
+            },
+            {
+              user_id: user.id,
+              name: 'À voir au cinema',
+              type: 'system',
+              is_public: false,
+            },
+          ],
+          { onConflict: 'user_id,name' }
+        )
+
+      if (listError) {
+        console.error(listError)
+        alert("Erreur création listes")
+        return
+      }
+
+      return
+    }
+
+    // FORGOT → reset password
     if (mode === 'forgot') {
       setAuthFlow('reset')
     }

@@ -34,7 +34,7 @@ def paris_sessions():
     for cinema in cinemas: # Pour chaque cinema
 
         cine_nb +=1
-        if(cine_nb > 33): #TEST Cine X
+        if(cine_nb > 46): #TEST Cine X
 
             print(f"{cine_nb}. Cinéma : {cinema['name']} (Allociné ID : {cinema['idallocine']})")
             for i in range (30):   # Sur 30 jours

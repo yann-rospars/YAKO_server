@@ -305,13 +305,13 @@ class DBManager:
             print(f"Erreur lors de l'insertion du lien film-personne : {e}")
 
     # -- Session
-    def insert_session(self, movie_id, cinema_id, startsAt, projection=None, version=None, booking_url=None, allocine_id=None):
+    def insert_session(self, movie_id, cinema_id, starts_at, projection=None, version=None, booking_url=None, allocine_id=None):
         try:
             self.supabase.table("sessions").upsert(
                 {
                     "movie_id": movie_id,
                     "cinema_id": cinema_id,
-                    "startsat": startsAt.isoformat() if startsAt else None,
+                    "starts_at": starts_at.isoformat() if starts_at else None,
                     "projection": projection,
                     "version": version,
                     "booking_url": booking_url,

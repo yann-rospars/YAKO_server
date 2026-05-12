@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { SafeAreaView, View, TextInput, Button, Text } from 'react-native'
 import { supabase } from '../lib/supabase'
 
-export default function CompleteProfileScreen() {
+export default function CompleteProfileScreen({ onComplete }: { onComplete: () => void }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -37,10 +37,18 @@ export default function CompleteProfileScreen() {
     }
 
     // 🔹 1. update username
-    const { error: profileError } = await supabase
+    // const { error: profileError } = await supabase
+    //   .from('users')
+    //   .update({ username })
+    //   .eq('id', user.id)
+    const { error: profileError, data: profileData } = await supabase
       .from('users')
       .update({ username })
       .eq('id', user.id)
+      .select()
+
+    console.log('profileData:', profileData)
+    console.log('profileError:', profileError)
 
     if (profileError) {
       alert(profileError.message)
@@ -60,7 +68,8 @@ export default function CompleteProfileScreen() {
     }
 
     alert('Profile created')
-
+    await supabase.auth.refreshSession()
+    onComplete()
     setLoading(false)
   }
 

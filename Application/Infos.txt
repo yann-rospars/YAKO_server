@@ -94,4 +94,7 @@ npm install @supabase/supabase-js
 npm install @react-native-async-storage/async-storage
 npm install expo-auth-session expo-web-browser
 npm install react-native-safe-area-context
+npm install @react-navigation/native-stack
+
+
 

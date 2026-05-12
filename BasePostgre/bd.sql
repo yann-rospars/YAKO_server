@@ -9,13 +9,19 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-    CREATE TYPE list_type AS ENUM ('watchlist', 'favorites', 'seen', 'waiting_revival', 'custom');
+    CREATE TYPE list_type AS ENUM ('system', 'custom');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
     CREATE TYPE notification_status AS ENUM ('pending', 'sent', 'failed', 'cancelled');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE friendship_status AS ENUM ('pending', 'accepted', 'rejected');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
@@ -34,7 +40,7 @@ CREATE TABLE IF NOT EXISTS movies (
     original_language VARCHAR(10),
     overview TEXT,
     en_overview TEXT,
-    popularity REAL,
+    popularity REAL DEFAULT 0 NOT NULL,
     poster_path TEXT,
     backdrop_path TEXT,
     release_date DATE,
@@ -148,7 +154,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     allocine_id BIGINT UNIQUE,
     movie_id INTEGER NOT NULL,
     cinema_id INTEGER NOT NULL,
-    startsAt TIMESTAMP NOT NULL,
+    starts_at TIMESTAMP NOT NULL,
     projection VARCHAR(50),
     version VARCHAR(50),
     booking_url TEXT,
@@ -166,7 +172,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     username TEXT UNIQUE,
-    avatar_url TEXT,
+    avatar_color TEXT DEFAULT '#FF6B35',
     city TEXT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
@@ -174,8 +180,34 @@ CREATE TABLE IF NOT EXISTS users (
     notifications_enabled BOOLEAN DEFAULT FALSE,
     email_notifications_enabled BOOLEAN DEFAULT FALSE,
     push_notifications_enabled BOOLEAN DEFAULT FALSE,
+    is_verified BOOLEAN DEFAULT FALSE;
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS friendships (
+    id SERIAL PRIMARY KEY,
+
+    user1_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user2_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    requested_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+
+    status friendship_status NOT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    CONSTRAINT check_not_self CHECK (user1_id <> user2_id),
+
+    CONSTRAINT check_requested_by
+    CHECK (requested_by = user1_id OR requested_by = user2_id)
+);
+
+CREATE UNIQUE INDEX unique_friendship_pair
+ON friendships (
+    LEAST(user1_id, user2_id),
+    GREATEST(user1_id, user2_id)
 );
 
 ---------------------------------------
@@ -185,7 +217,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS lists (
     id SERIAL PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
+    name VARCHAR(30) NOT NULL,
     type list_type NOT NULL DEFAULT 'custom',
     is_public BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -193,12 +225,6 @@ CREATE TABLE IF NOT EXISTS lists (
 
     CONSTRAINT unique_default_list_per_user UNIQUE (user_id, name)
 );
-
-CREATE INDEX IF NOT EXISTS idx_lists_user_id
-ON lists(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_lists_user_type
-ON lists(user_id, type);
 
 ---------------------------------------
 -- FILMS DANS LES LISTES
@@ -211,12 +237,6 @@ CREATE TABLE IF NOT EXISTS list_movies (
     note TEXT,
     PRIMARY KEY (list_id, movie_id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_list_movies_movie_id
-ON list_movies(movie_id);
-
-CREATE INDEX IF NOT EXISTS idx_list_movies_list_id
-ON list_movies(list_id);
 
 ---------------------------------------
 -- NOTES / AVIS UTILISATEURS
@@ -233,12 +253,6 @@ CREATE TABLE IF NOT EXISTS user_ratings (
     PRIMARY KEY (user_id, movie_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_ratings_movie_id
-ON user_ratings(movie_id);
-
-CREATE INDEX IF NOT EXISTS idx_user_ratings_user_id
-ON user_ratings(user_id);
-
 ---------------------------------------
 -- APPAREILS UTILISATEUR (NOTIFICATIONS PUSH)
 ---------------------------------------
@@ -253,12 +267,6 @@ CREATE TABLE IF NOT EXISTS user_devices (
     last_seen TIMESTAMP DEFAULT NOW(),
     is_active BOOLEAN DEFAULT TRUE
 );
-
-CREATE INDEX IF NOT EXISTS idx_user_devices_user_id
-ON user_devices(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_user_devices_active
-ON user_devices(user_id, is_active);
 
 ---------------------------------------
 -- ÉVÉNEMENTS DE NOTIFICATION
@@ -280,15 +288,6 @@ CREATE TABLE IF NOT EXISTS notification_events (
     sent_at TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_notification_events_user
-ON notification_events(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_notification_events_status
-ON notification_events(status);
-
-CREATE INDEX IF NOT EXISTS idx_notification_events_user_status
-ON notification_events(user_id, status);
-
 ---------------------------------------
 -- AUTHENTIFICATION EXTERNE / PROVIDERS
 ---------------------------------------
@@ -303,36 +302,27 @@ CREATE TABLE IF NOT EXISTS user_auth_providers (
     UNIQUE (provider, provider_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_auth_providers_user_id
-ON user_auth_providers(user_id);
-
 ---------------------------------------
 -- Fonction User 
 ---------------------------------------
 
---
+-- créer automatiquement une ligne dans public.users dès qu'un utilisateur s'inscrit via Supabase Auth.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.users (id, username, avatar_url)
-  VALUES (
-    NEW.id,
-    -- split_part(NEW.email, '@', 1),
-    NULL,
-    NULL
-  );
+  INSERT INTO public.users (id, username)
+  VALUES (NEW.id, NULL);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
 
-ALTER TABLE users ADD CONSTRAINT users_id_unique UNIQUE (id);
-
---
+-- vérifier si un email existe déjà dans auth.users depuis l'app React Native.
 CREATE OR REPLACE FUNCTION email_exists(email_input TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -342,42 +332,85 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Crée la liste par défaut quand un user est inséré dans public.users
+CREATE OR REPLACE FUNCTION public.create_default_list()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO lists (user_id, name, type, is_public)
+  VALUES (NEW.id, 'À voir au cinema', 'system', FALSE)
+  ON CONFLICT (user_id, name) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_create_default_list ON users;
+CREATE TRIGGER trigger_create_default_list
+AFTER INSERT ON users
+FOR EACH ROW
+EXECUTE FUNCTION public.create_default_list();
+
+---------------------------------------
+-- POLICY IMPORTANTES POUR LES USERS
+---------------------------------------
+
+CREATE POLICY "Users can update their own profile"
+ON users
+FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can read their own profile"
+ON users
+FOR SELECT
+USING (auth.uid() = id);
+
+-- Lecture
+CREATE POLICY "Users can select their own lists"
+ON lists
+FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Insertion
+CREATE POLICY "Users can insert their own lists"
+ON lists
+FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Modification (custom seulement)
+CREATE POLICY "Users can update their own custom lists"
+ON lists
+FOR UPDATE
+USING (auth.uid() = user_id AND type != 'system');
+
+-- Suppression (custom seulement)
+CREATE POLICY "Users can delete their own custom lists"
+ON lists
+FOR DELETE
+USING (auth.uid() = user_id AND type != 'system');
+
 ---------------------------------------
 -- INDEX IMPORTANTS POUR LES RECHERCHES
 ---------------------------------------
 
-CREATE INDEX IF NOT EXISTS idx_movies_allocine_id
-ON movies(allocine_id);
+CREATE INDEX IF NOT EXISTS idx_list_movies_movie_id ON list_movies(movie_id);
+CREATE INDEX IF NOT EXISTS idx_list_movies_list_id ON list_movies(list_id);
 
-CREATE INDEX IF NOT EXISTS idx_movies_tmdb_id
-ON movies(tmdb_id);
+CREATE INDEX IF NOT EXISTS idx_user_ratings_movie_id ON user_ratings(movie_id);
+CREATE INDEX IF NOT EXISTS idx_user_ratings_user_id ON user_ratings(user_id);
 
-CREATE INDEX IF NOT EXISTS idx_movies_title
-ON movies(title);
+CREATE INDEX IF NOT EXISTS idx_sessions_movie_id ON sessions(movie_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_cinema_id ON sessions(cinema_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_movie_starts_at ON sessions(movie_id, starts_at);
 
-CREATE INDEX IF NOT EXISTS idx_movies_release_date
-ON movies(release_date);
+CREATE INDEX IF NOT EXISTS idx_movies_allocine_id ON movies(allocine_id);
+CREATE INDEX IF NOT EXISTS idx_movies_tmdb_id ON movies(tmdb_id);
+CREATE INDEX IF NOT EXISTS idx_movies_release_date ON movies(release_date);
 
-CREATE INDEX IF NOT EXISTS idx_peoples_allocine_id
-ON peoples(allocine_id);
+CREATE INDEX IF NOT EXISTS idx_notification_events_user_status ON notification_events(user_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_peoples_tmdb_id
-ON peoples(tmdb_id);
+CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id);
 
-CREATE INDEX IF NOT EXISTS idx_sessions_movie_id
-ON sessions(movie_id);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_cinema_id
-ON sessions(cinema_id);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_startsAt
-ON sessions(startsAt);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_movie_startsAt
-ON sessions(movie_id, startsAt);
-
-CREATE INDEX IF NOT EXISTS idx_cinemas_idallocine
-ON cinemas(idallocine);
+CREATE INDEX IF NOT EXISTS idx_user_auth_providers_user_id ON user_auth_providers(user_id);
 
 ---------------------------------------
 -- Commandes
@@ -429,6 +462,8 @@ DROP TABLE IF EXISTS
     users
 CASCADE;
 
+-- Suppression des users reel
+DELETE FROM auth.users;
 
 ---------------------------------------
 -- INSERT Cinema

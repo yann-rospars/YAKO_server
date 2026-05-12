@@ -1,0 +1,8 @@
+https://api.themoviedb.org/3/movie/{movie_id}?api_key=987cbce1ac3db60be7ad5660f07b6b84&append_to_response=credits&language=fr-FR
+
+https://api.themoviedb.org/3/search/movie?api_key=987cbce1ac3db60be7ad5660f07b6b84&query={movie_ac.title}&language=fr-FR&page=1
+
+https://image.tmdb.org/t/p/w500/
+
+
+
