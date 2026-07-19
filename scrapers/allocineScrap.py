@@ -34,7 +34,7 @@ def paris_sessions():
     for cinema in cinemas: # Pour chaque cinema
 
         cine_nb +=1
-        if(cine_nb > 46): #TEST Cine X
+        if(cine_nb > 0): #TEST Cine X
 
             print(f"{cine_nb}. Cinéma : {cinema['name']} (Allociné ID : {cinema['idallocine']})")
             for i in range (30):   # Sur 30 jours
@@ -107,7 +107,7 @@ def add_movie_to_BD(movie_ac, directors):
     movie_tmdb = None
     potential_movies_tmdb = TMDB_Fetcher.get_potentials_movies_tmdb(movie_ac)
 
-    # --- selectionne le bon film
+    # --- selectionne le bon film (Mapping)
     for potenial_movie in potential_movies_tmdb:
         score = 0
         tmdb_movie_info = TMDB_Fetcher.get_movie_details(potenial_movie.tmdb_id)
@@ -136,6 +136,7 @@ def add_movie_to_BD(movie_ac, directors):
             directors = charge_directors_with_TMDB(directors, crew)
             break 
 
+    # --- Mapping réussi
     if(movie_tmdb != None):
         
         movie_id = DB_Manager.get_movie_id(tmdb_id=movie_tmdb.tmdb_id)
@@ -180,49 +181,6 @@ def add_movie_to_BD(movie_ac, directors):
 
             # Charge les Director associé au film (logique importante)
             charge_directors_AC_TMDB(DB_Manager,directors,movie_id)
-            # for director in directors:
-            #     if (director.id_tmdb is not None):
-            #         if(director.id_ac is not None):
-            #             person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)     
-            #             person_id_2 = DB_Manager.get_people_id(None, None, director.id_ac)
-
-            #             if person_id_1 is None and person_id_2 is None: # Le director n'est pas dans la BD
-            #                 person_id = DB_Manager.insert_people(director.id_tmdb,director.id_ac,director.name,director.profile_path)
-
-            #             elif person_id_1 is not None and person_id_2 is None: # Le director est dans la BD avec l'id TMDB
-            #                 person_id = person_id_1
-            #                 DB_Manager.update_people(person_id,allocine_id=director.id_ac)
-
-            #             elif person_id_2 is not None and person_id_1 is None: # Le director est dans la BD avec l'id Allocine
-            #                 person_id = person_id_2
-            #                 DB_Manager.update_people(person_id,tmdb_id=director.id_tmdb,profile_path=director.profile_path)
-
-            #             elif person_id_2 == person_id_1 : # Le directeur est déjà entier dans la BD
-            #                 person_id = person_id_1
-
-            #             else : # Il y'a deux version du director dans la BD (On garde le people chargé avec TMDB)
-            #                 person_id = person_id_1
-            #                 DB_Manager.update_movie_people_director(person_id_2,person_id) # (old, new)
-            #                 DB_Manager.delete_people(person_id_2)
-            #                 DB_Manager.update_people(person_id,allocine_id=director.id_ac)
-
-            #         else :
-            #             person_id_1 = DB_Manager.get_people_id(None, director.id_tmdb, None)  
-            #             if person_id_1 is None : # Le director n'est pas dans la BD
-            #                 person_id = DB_Manager.insert_people(director.id_tmdb,None,director.name,director.profile_path)
-            #             else :
-            #                 person_id = person_id_1
-                        
-            #         DB_Manager.insert_movie_people(movie_id,person_id,"director",None)
-
-
-
-
-            # Charge les Acteurs associé au film
-            # for cast in tmdb_movie_info['credits']['cast'][:5]:
-            #     if not DB_Manager.people_exists(cast['id']):
-            #         DB_Manager.insert_people(cast['id'],cast['name'],cast['profile_path'])
-            #     DB_Manager.insert_movie_people(movie_id,cast['id'], "actor",cast['character'])
 
             # Charge les Trailer associé au film
             trailers = TMDB_Fetcher.extract_tmdb_trailer(movie_tmdb.tmdb_id,movie_tmdb.original_language)
@@ -272,7 +230,7 @@ def add_movie_to_BD(movie_ac, directors):
 
                 DB_Manager.insert_trailer(trailer, movie_id)
 
-
+    # Echec de mapping
     else:
         print(f"Charge avec AC")
 
@@ -304,12 +262,19 @@ def add_sessions_to_bd(movie_id, cineID, session):
         projection_list = session.get("projection", [])
         projection = projection_list[0] if projection_list else None
         version = session['diffusionVersion']
+
         ticketing_list = session.get("data", {}).get("ticketing", [])
+        booking_url = None
+
         if ticketing_list:
-            url_list = ticketing_list[0].get("urls", [])
+            # On cherche d'abord le provider "default"
+            selected_ticketing = next(
+                (ticketing for ticketing in ticketing_list if ticketing.get("provider") == "default"),
+                ticketing_list[0]  # fallback : premier élément si aucun default
+            )
+
+            url_list = selected_ticketing.get("urls", [])
             booking_url = url_list[0] if url_list else None
-        else:
-            booking_url = None
 
         DB_Manager.insert_session(movie_id, cineID, startsAt, projection, version, booking_url, allocineID)
 

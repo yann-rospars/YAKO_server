@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS users (
     notifications_enabled BOOLEAN DEFAULT FALSE,
     email_notifications_enabled BOOLEAN DEFAULT FALSE,
     push_notifications_enabled BOOLEAN DEFAULT FALSE,
-    is_verified BOOLEAN DEFAULT FALSE;
+    is_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

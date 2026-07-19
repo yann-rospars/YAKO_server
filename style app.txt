@@ -1,0 +1,12 @@
+Noir salle obscure	
+	#0F1115
+Gris projecteur	
+	#1A1D24
+Blanc écran	
+	#F5F5F5
+Jaune projecteur	
+	#FFC247
+Or cinéma premium	
+	#D4A017
+Rouge rideau	
+	#8B1E2D
