@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -13,9 +13,17 @@ import {
   Pressable,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useFocusEffect } from '@react-navigation/native'
+
 import { supabase } from '../lib/supabase'
-import { C } from '../theme/colors'
+import LoadingState from '../components/LoadingState'
+
+const COLORS = {
+  primary: '#FFE17A',
+  white: '#FFFFFF',
+  black: '#111111',
+  grey: '#777777',
+  lightGrey: '#F4F1E8',
+}
 
 type ListWithCount = {
   id: number
@@ -25,41 +33,67 @@ type ListWithCount = {
   movie_count: number
 }
 
-export default function ListsScreen({ navigation }: any) {
-  const [lists, setLists] = useState<ListWithCount[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modalVisible, setModalVisible] = useState(false)
-  const [newListName, setNewListName] = useState('')
-  const [creating, setCreating] = useState(false)
+export default function ListsScreen({
+  navigation,
+}: any) {
+  const [lists, setLists] =
+    useState<ListWithCount[]>([])
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchLists()
-    }, [])
-  )
+  const [loading, setLoading] = useState(true)
+
+  const [modalVisible, setModalVisible] =
+    useState(false)
+
+  const [newListName, setNewListName] =
+    useState('')
+
+  const [creating, setCreating] =
+    useState(false)
+
+  useEffect(() => {
+    fetchLists()
+  }, [])
 
   const fetchLists = async () => {
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    // Récupère les listes + le count de films via la relation list_movies
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
     const { data, error } = await supabase
       .from('lists')
-      .select('id, name, type, is_public, list_movies(count)')
+      .select(
+        'id, name, type, is_public, list_movies(count)'
+      )
       .eq('user_id', user.id)
-      .order('type', { ascending: false }) // system en premier
-      .order('name', { ascending: true })
+      .order('type', {
+        ascending: false,
+      })
+      .order('name', {
+        ascending: true,
+      })
 
-    if (error) { console.error(error); setLoading(false); return }
+    if (error) {
+      console.error(error)
+      setLoading(false)
+      return
+    }
 
-    const formatted: ListWithCount[] = (data ?? []).map((l: any) => ({
-      id: l.id,
-      name: l.name,
-      type: l.type,
-      is_public: l.is_public,
-      movie_count: l.list_movies?.[0]?.count ?? 0,
+    const formatted: ListWithCount[] = (
+      data ?? []
+    ).map((list: any) => ({
+      id: list.id,
+      name: list.name,
+      type: list.type,
+      is_public: list.is_public,
+      movie_count:
+        list.list_movies?.[0]?.count ?? 0,
     }))
 
     setLists(formatted)
@@ -68,25 +102,44 @@ export default function ListsScreen({ navigation }: any) {
 
   const createList = async () => {
     const name = newListName.trim()
+
     if (!name) return
 
     setCreating(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setCreating(false); return }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setCreating(false)
+      return
+    }
 
     const { error } = await supabase
       .from('lists')
-      .insert({ user_id: user.id, name, type: 'custom', is_public: false })
+      .insert({
+        user_id: user.id,
+        name,
+        type: 'custom',
+        is_public: false,
+      })
 
     setCreating(false)
 
     if (error) {
       if (error.code === '23505') {
-        alert('Tu as déjà une liste avec ce nom.')
+        alert(
+          'Tu as déjà une liste avec ce nom.'
+        )
       } else {
-        alert('Erreur lors de la création.')
+        alert(
+          'Erreur lors de la création.'
+        )
+
         console.error(error)
       }
+
       return
     }
 
@@ -94,387 +147,716 @@ export default function ListsScreen({ navigation }: any) {
     setModalVisible(false)
     fetchLists()
   }
-  const systemLists = lists.filter(l => l.type === 'system')
-  const customLists = lists.filter(l => l.type === 'custom')
 
-  const renderBubble = ({ item }: { item: ListWithCount }) => (
+  const closeModal = () => {
+    setModalVisible(false)
+    setNewListName('')
+  }
+
+  const systemLists = lists.filter(
+    (list) => list.type === 'system'
+  )
+
+  const customLists = lists.filter(
+    (list) => list.type === 'custom'
+  )
+
+  const renderListCard = (
+    item: ListWithCount
+  ) => (
     <TouchableOpacity
-      style={[styles.bubble, item.type === 'system' && styles.bubbleSystem]}
-      onPress={() => navigation.navigate('ListDetail', { listId: item.id, listName: item.name })}
-      activeOpacity={0.75}
+      activeOpacity={0.8}
+      style={[
+        styles.listCard,
+        item.type === 'system' &&
+          styles.systemListCard,
+      ]}
+      onPress={() =>
+        navigation.navigate('ListDetail', {
+          listId: item.id,
+          listName: item.name,
+        })
+      }
     >
-      {item.type === 'system' && (
-        <Text style={styles.systemBadge}>SYSTÈME</Text>
-      )}
-      <Text style={styles.bubbleName} numberOfLines={2}>{item.name}</Text>
+      <Text
+        style={styles.listName}
+        numberOfLines={2}
+      >
+        {item.name}
+      </Text>
+
       <View style={styles.countRow}>
-        <Text style={styles.countNumber}>{item.movie_count}</Text>
-        <Text style={styles.countLabel}>{item.movie_count === 1 ? 'film' : 'films'}</Text>
+        <Text style={styles.countNumber}>
+          {item.movie_count}
+        </Text>
+
+        <Text style={styles.countLabel}>
+          {item.movie_count === 1
+            ? 'FILM'
+            : 'FILMS'}
+        </Text>
       </View>
-      {item.is_public && <Text style={styles.publicTag}>🌐 publique</Text>}
     </TouchableOpacity>
+  )
+
+  const renderSectionTitle = (
+    title: string
+  ) => (
+    <View style={styles.sectionTitleContainer}>
+      <View style={styles.sectionTitleLine} />
+
+      <Text style={styles.sectionTitle}>
+        {title}
+      </Text>
+
+      <View style={styles.sectionTitleLine} />
+    </View>
   )
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.root, styles.center]} edges={['top']}>
-        <ActivityIndicator size="large" color={C.accent} />
-      </SafeAreaView>
+      <View style={styles.loadingRoot}>
+        <SafeAreaView
+          edges={['top']}
+          style={styles.loadingSafeArea}
+        />
+
+        <View style={styles.loadingContainer}>
+          <LoadingState />
+        </View>
+
+        <SafeAreaView
+          edges={['bottom']}
+          style={styles.loadingSafeArea}
+        />
+      </View>
     )
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Mes listes</Text>
-      </View>
+    <View style={styles.root}>
+      {/* SAFE AREA DU HAUT */}
+      <SafeAreaView
+        edges={['top']}
+        style={styles.topSafeArea}
+      />
 
-      <FlatList
-        data={[]}
-        renderItem={null}
-        ListHeaderComponent={
-          <View style={styles.container}>
+      {/* ÉCRAN PRINCIPAL */}
+      <View style={styles.screen}>
+        <View style={styles.topBar}>
+          <Text style={styles.title}>
+            MES LISTES
+          </Text>
+        </View>
 
-            {/* LISTES SYSTÈME */}
-            {systemLists.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Listes par défaut</Text>
-                <View style={styles.grid}>
-                  {systemLists.map(item => (
-                    <View key={item.id} style={styles.bubbleWrapper}>
-                      {renderBubble({ item })}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+        <FlatList
+          data={[]}
+          renderItem={null}
+          keyExtractor={() => 'lists-content'}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={
+            styles.contentContainer
+          }
+          ListHeaderComponent={
+            <View style={styles.container}>
+              {/* LISTES PAR DÉFAUT */}
+              {systemLists.length > 0 && (
+                <View style={styles.section}>
+                  {renderSectionTitle(
+                    'LISTES PAR DÉFAUT'
+                  )}
 
-            {/* LISTES CUSTOM */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Mes listes</Text>
-                <TouchableOpacity
-                  style={styles.addBtn}
-                  onPress={() => setModalVisible(true)}
-                >
-                  <Text style={styles.addBtnText}>+ Nouvelle</Text>
-                </TouchableOpacity>
-              </View>
-
-              {customLists.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>Aucune liste personnalisée</Text>
-                  <Text style={styles.emptyHint}>Crée ta première liste pour organiser tes films</Text>
-                </View>
-              ) : (
-                <View style={styles.grid}>
-                  {customLists.map(item => (
-                    <View key={item.id} style={styles.bubbleWrapper}>
-                      {renderBubble({ item })}
-                    </View>
-                  ))}
+                  <View style={styles.grid}>
+                    {systemLists.map((item) => (
+                      <View
+                        key={item.id}
+                        style={
+                          styles.listCardWrapper
+                        }
+                      >
+                        {renderListCard(item)}
+                      </View>
+                    ))}
+                  </View>
                 </View>
               )}
-            </View>
 
-          </View>
-        }
-        keyExtractor={() => 'header'}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      />
+              {/* LISTES PERSONNALISÉES */}
+              <View style={styles.section}>
+                <View
+                  style={
+                    styles.customSectionHeader
+                  }
+                >
+                  <View
+                    style={
+                      styles.customSectionTitle
+                    }
+                  >
+                    {renderSectionTitle(
+                      'MES LISTES'
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={styles.addBtn}
+                    onPress={() =>
+                      setModalVisible(true)
+                    }
+                  >
+                    <Text
+                      style={styles.addBtnText}
+                    >
+                      +
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {customLists.length === 0 ? (
+                  <View style={styles.emptyBox}>
+                    <Text
+                      style={styles.emptyText}
+                    >
+                      AUCUNE LISTE PERSONNALISÉE
+                    </Text>
+
+                    <Text
+                      style={styles.emptyHint}
+                    >
+                      Crée ta première liste pour
+                      organiser tes films.
+                    </Text>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      style={
+                        styles.emptyCreateBtn
+                      }
+                      onPress={() =>
+                        setModalVisible(true)
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.emptyCreateText
+                        }
+                      >
+                        + CRÉER UNE LISTE
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.grid}>
+                    {customLists.map((item) => (
+                      <View
+                        key={item.id}
+                        style={
+                          styles.listCardWrapper
+                        }
+                      >
+                        {renderListCard(item)}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          }
+        />
+      </View>
 
       {/* MODAL NOUVELLE LISTE */}
       <Modal
         visible={modalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeModal}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={
+            Platform.OS === 'ios'
+              ? 'padding'
+              : 'height'
+          }
           style={styles.modalOverlay}
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeModal}
+          />
+
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Nouvelle liste</Text>
+            <View
+              style={
+                styles.modalTitleContainer
+              }
+            >
+              <View
+                style={styles.modalTitleLine}
+              />
+
+              <Text style={styles.modalTitle}>
+                NOUVELLE LISTE
+              </Text>
+
+              <View
+                style={styles.modalTitleLine}
+              />
+            </View>
+
+            <Text style={styles.inputLabel}>
+              NOM DE LA LISTE
+            </Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Nom de la liste"
-              placeholderTextColor={C.muted}
+              placeholder="Ex. Films préférés"
+              placeholderTextColor={COLORS.grey}
               value={newListName}
               onChangeText={setNewListName}
               maxLength={30}
               autoFocus
               onSubmitEditing={createList}
               returnKeyType="done"
+              allowFontScaling={false}
             />
-            <Text style={styles.charCount}>{newListName.length}/30</Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
+                activeOpacity={0.8}
                 style={styles.cancelBtn}
-                onPress={() => { setModalVisible(false); setNewListName('') }}
+                onPress={closeModal}
               >
-                <Text style={styles.cancelText}>Annuler</Text>
+                <Text
+                  style={styles.cancelText}
+                >
+                  ANNULER
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.confirmBtn, (!newListName.trim() || creating) && styles.confirmBtnDisabled]}
+                activeOpacity={0.8}
+                style={[
+                  styles.confirmBtn,
+                  (!newListName.trim() ||
+                    creating) &&
+                    styles.confirmBtnDisabled,
+                ]}
                 onPress={createList}
-                disabled={!newListName.trim() || creating}
-              >
-                {creating
-                  ? <ActivityIndicator size="small" color="white" />
-                  : <Text style={styles.confirmText}>Créer</Text>
+                disabled={
+                  !newListName.trim() ||
+                  creating
                 }
+              >
+                {creating ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={COLORS.black}
+                  />
+                ) : (
+                  <Text
+                    style={styles.confirmText}
+                  >
+                    CRÉER
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-    </SafeAreaView>
+    </View>
   )
 }
 
-const BUBBLE_SIZE = 150
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
-  center: { justifyContent: 'center', alignItems: 'center' },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 16,
-    paddingBottom: 8,
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.lightGrey,
   },
 
-  backBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  topSafeArea: {
+    backgroundColor: COLORS.lightGrey,
+  },
+  
+  loadingRoot: {
+    flex: 1,
+    backgroundColor: COLORS.white,
   },
 
-  backText: { color: C.text, fontSize: 20, fontWeight: 'bold' },
+  loadingSafeArea: {
+    backgroundColor: COLORS.white,
+  },
 
-  title: {
-    color: C.text,
-    fontSize: 20,
-    fontWeight: '800',
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.lightGrey,
+  },
+
+  contentContainer: {
+    paddingBottom: 24,
   },
 
   container: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 18,
   },
+
+  // TOP BAR
+
+  topBar: {
+    minHeight: 72,
+    marginHorizontal: 16,
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 14,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
+  },
+
+  title: {
+    color: COLORS.black,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    textAlign: 'center',
+  },
+
+  // SECTIONS
 
   section: {
-    marginBottom: 24,
+    marginBottom: 26,
   },
 
-  sectionHeader: {
+  sectionTitleContainer: {
+    flex: 1,
+    marginBottom: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+  },
+
+  sectionTitleLine: {
+    flex: 1,
+    height: 3,
+    backgroundColor: COLORS.black,
   },
 
   sectionTitle: {
-    color: C.accent,
-    fontSize: 12,
-    fontWeight: '700',
+    marginHorizontal: 10,
+    color: COLORS.black,
+    fontSize: 11,
+    fontWeight: '900',
     letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 12,
+    textAlign: 'center',
+  },
+
+  customSectionHeader: {
+    minHeight: 48,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+
+  customSectionTitle: {
+    flex: 1,
   },
 
   addBtn: {
-    backgroundColor: C.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 3,
+      height: 3,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
   },
 
   addBtnText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '700',
+    marginTop: -2,
+    color: COLORS.black,
+    fontSize: 24,
+    fontWeight: '900',
   },
+
+  // GRID
 
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    marginHorizontal: -6,
   },
 
-  bubbleWrapper: {
-    width: BUBBLE_SIZE,
+  listCardWrapper: {
+    width: '50%',
+    paddingHorizontal: 6,
+    marginBottom: 14,
   },
 
-  bubble: {
-    width: BUBBLE_SIZE,
-    height: BUBBLE_SIZE,
-    borderRadius: 20,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    padding: 14,
+  listCard: {
+    minHeight: 120,
+    padding: 13,
     justifyContent: 'space-between',
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 14,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
 
-  bubbleSystem: {
-    borderColor: C.accent,
-    borderWidth: 1.5,
+  systemListCard: {
+    backgroundColor: COLORS.primary,
   },
 
-  systemBadge: {
-    color: C.accent,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-
-  bubbleName: {
-    color: C.text,
-    fontSize: 15,
-    fontWeight: '700',
-    flex: 1,
-    marginTop: 4,
+  listName: {
+    marginVertical: 9,
+    color: COLORS.black,
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 17,
   },
 
   countRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 4,
+    gap: 5,
   },
 
   countNumber: {
-    color: C.accent,
-    fontSize: 22,
+    color: COLORS.black,
+    fontSize: 23,
     fontWeight: '900',
   },
 
   countLabel: {
-    color: C.muted,
-    fontSize: 12,
+    color: COLORS.grey,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
 
-  publicTag: {
-    color: C.muted,
-    fontSize: 10,
-    marginTop: 2,
-  },
+  // EMPTY STATE
 
   emptyBox: {
-    backgroundColor: C.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 26,
     alignItems: 'center',
-    gap: 6,
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 14,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
 
   emptyText: {
-    color: C.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  emptyHint: {
-    color: C.muted,
+    color: COLORS.black,
     fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
     textAlign: 'center',
   },
 
+  emptyHint: {
+    marginTop: 8,
+    color: COLORS.grey,
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+
+  emptyCreateBtn: {
+    minHeight: 44,
+    marginTop: 18,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 10,
+  },
+
+  emptyCreateText: {
+    color: COLORS.black,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+
   // MODAL
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
+    paddingHorizontal: 24,
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
 
   modalBox: {
-    backgroundColor: C.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: C.border,
-    padding: 20,
     width: '100%',
+    padding: 18,
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 16,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 6,
+      height: 6,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 8,
+  },
+
+  modalTitleContainer: {
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  modalTitleLine: {
+    flex: 1,
+    height: 3,
+    backgroundColor: COLORS.black,
   },
 
   modalTitle: {
-    color: C.text,
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 16,
+    marginHorizontal: 10,
+    color: COLORS.black,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+
+  inputLabel: {
+    marginBottom: 6,
+    color: COLORS.black,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
 
   input: {
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
+    minHeight: 50,
+    paddingHorizontal: 12,
+    color: COLORS.black,
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
     borderRadius: 12,
-    padding: 12,
-    color: C.text,
-    fontSize: 15,
-  },
+    fontSize: 14,
+    fontWeight: '600',
 
-  charCount: {
-    color: C.muted,
-    fontSize: 11,
-    textAlign: 'right',
-    marginTop: 4,
-    marginBottom: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 3,
+      height: 3,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
   },
 
   modalActions: {
+    marginTop: 20,
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
 
   cancelBtn: {
     flex: 1,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    padding: 13,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
   },
 
   cancelText: {
-    color: C.muted,
-    fontWeight: '600',
-    fontSize: 14,
+    color: COLORS.black,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
 
   confirmBtn: {
     flex: 1,
-    backgroundColor: C.accent,
-    borderRadius: 12,
-    padding: 13,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 3,
+      height: 3,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
   },
 
   confirmBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.45,
   },
 
   confirmText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 14,
+    color: COLORS.black,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
 })

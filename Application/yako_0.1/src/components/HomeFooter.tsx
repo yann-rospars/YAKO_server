@@ -4,43 +4,81 @@ import {
   Text,
   View,
 } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type HomeFooterProps = {
+  onHomePress: () => void
   onCalendarPress: () => void
-  onSessionsPress: () => void
   onAccountPress: () => void
   onListsPress: () => void
 }
 
 export default function HomeFooter({
+  onHomePress,
   onCalendarPress,
-  onSessionsPress,
   onAccountPress,
   onListsPress,
 }: HomeFooterProps) {
+  const insets = useSafeAreaInsets()
+
   return (
-    <View style={styles.footer}>
+    <View
+      style={[
+        styles.footer,
+        {
+          paddingBottom: Math.max(
+            insets.bottom + 4,
+            10
+          ),
+        },
+      ]}
+    >
+      <FooterButton
+        label="HOME"
+        icon={
+          <MaterialIcons
+            name="home"
+            size={22}
+            color="#111111"
+          />
+        }
+        onPress={onHomePress}
+      />
+
       <FooterButton
         label="CALENDRIER"
-        icon="▦"
+        icon={
+          <MaterialIcons
+            name="calendar-month"
+            size={22}
+            color="#111111"
+          />
+        }
         onPress={onCalendarPress}
       />
 
       <FooterButton
-        label="SÉANCES"
-        icon="▶"
-        onPress={onSessionsPress}
-      />
-
-      <FooterButton
         label="COMPTE"
-        icon="●"
+        icon={
+          <MaterialIcons
+            name="person"
+            size={22}
+            color="#111111"
+          />
+        }
         onPress={onAccountPress}
       />
 
       <FooterButton
         label="LISTES"
-        icon="☰"
+        icon={
+          <MaterialIcons
+            name="bookmark"
+            size={22}
+            color="#111111"
+          />
+        }
         onPress={onListsPress}
       />
     </View>
@@ -49,7 +87,7 @@ export default function HomeFooter({
 
 type FooterButtonProps = {
   label: string
-  icon: string
+  icon: React.ReactNode
   onPress: () => void
 }
 
@@ -67,9 +105,7 @@ function FooterButton({
       onPress={onPress}
     >
       <View style={styles.footerIconContainer}>
-        <Text style={styles.footerIcon}>
-          {icon}
-        </Text>
+        {icon}
       </View>
 
       <Text
@@ -85,10 +121,8 @@ function FooterButton({
 
 const styles = StyleSheet.create({
   footer: {
-    minHeight: 10,
     paddingHorizontal: 8,
-    paddingTop: 5,
-    paddingBottom: 0,
+    paddingTop: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: '#FFE17A',
@@ -121,13 +155,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#111111',
     borderRadius: 8,
-  },
-
-  footerIcon: {
-    color: '#111111',
-    fontSize: 16,
-    fontWeight: '900',
-    lineHeight: 18,
   },
 
   footerLabel: {

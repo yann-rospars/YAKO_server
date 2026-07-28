@@ -19,7 +19,6 @@ import { Movie } from '../types/movie'
 import { getOldMoviesWithFutureSessions } from '../services/movieService'
 import { Cinema } from '../types/cinema'
 import { getCinemas } from '../services/cinemaService'
-import HomeFooter from '../components/HomeFooter'
 import LoadingState from '../components/LoadingState'
 import EmptyState from '../components/EmptyState'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -265,7 +264,7 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView
       style={styles.safeArea}
-      edges={['top', 'bottom']}
+      edges={['top']}
     >
       <StatusBar
         barStyle="dark-content"
@@ -323,21 +322,6 @@ export default function HomeScreen({ navigation }: Props) {
             keyboardShouldPersistTaps="handled"
           />
         )}
-
-        <HomeFooter
-          onCalendarPress={() =>
-            navigation.navigate('Calendar')
-          }
-          onSessionsPress={() =>
-            navigation.navigate('Sessions')
-          }
-          onAccountPress={() =>
-            navigation.navigate('Account')
-          }
-          onListsPress={() =>
-            navigation.navigate('Lists')
-          }
-        />
       </View>
     </SafeAreaView>
   )

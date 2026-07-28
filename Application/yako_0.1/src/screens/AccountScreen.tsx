@@ -1,17 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
-  ScrollView
+  ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { C } from '../theme/colors'
 import { useFocusEffect } from '@react-navigation/native'
 import { useCallback } from 'react'
+import LoadingState from '../components/LoadingState'
+
+const COLORS = {
+  primary: '#FFE17A',
+  white: '#FFFFFF',
+  black: '#111111',
+  grey: '#777777',
+  lightGrey: '#F4F1E8',
+  red: '#E5484D',
+}
 
 export default function AccountScreen({ navigation }: any) {
   const [user, setUser] = useState<any>(null)
@@ -24,7 +32,10 @@ export default function AccountScreen({ navigation }: any) {
   )
 
   const fetchUser = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+
     if (!authUser) return
 
     const { data, error } = await supabase
@@ -33,7 +44,10 @@ export default function AccountScreen({ navigation }: any) {
       .eq('id', authUser.id)
       .single()
 
-    if (error) { console.log(error); return }
+    if (error) {
+      console.log(error)
+      return
+    }
 
     setUser(data)
     setLoading(false)
@@ -43,215 +57,459 @@ export default function AccountScreen({ navigation }: any) {
     await supabase.auth.signOut()
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.root, styles.center]} edges={['top']}>
-        <ActivityIndicator size="large" color={C.accent} />
-      </SafeAreaView>
-    )
-  }
-
-  if (!user) {
-    return (
-      <SafeAreaView style={styles.root} edges={['top']}>
-        <Text style={{ color: C.text, padding: 16 }}>Utilisateur introuvable</Text>
-      </SafeAreaView>
-    )
-  }
-
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.root}>
+      <SafeAreaView
+        edges={['top']}
+        style={styles.topSafeArea}
+      />
 
-        {/* TOP BAR */}
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
+      <View style={styles.screen}>
+        {loading ? (
+          <LoadingState />
+        ) : !user ? (
+          <View style={styles.notFoundContainer}>
+            <Text style={styles.notFoundText}>
+              UTILISATEUR INTROUVABLE
+            </Text>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* TOP BAR */}
+            <View style={styles.topBar}>
+              <View style={styles.profileInline}>
+                <View
+                  style={[
+                    styles.avatar,
+                    {
+                      backgroundColor:
+                        user.avatar_color ||
+                        COLORS.primary,
+                    },
+                  ]}
+                />
 
-          <View style={styles.profileInline}>
-            <View style={[styles.avatar, { backgroundColor: user.avatar_color || C.accent }]} />
-            <View>
-              <Text style={styles.username}>{user.username || 'Utilisateur'}</Text>
-              {user.city && <Text style={styles.city}>📍 {user.city}</Text>}
+                <View style={styles.profileText}>
+                  <Text
+                    style={styles.username}
+                    numberOfLines={1}
+                  >
+                    {user.username || 'Utilisateur'}
+                  </Text>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
 
-        {/* LOCALISATION */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Localisation</Text>
+            {/* LOCALISATION */}
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={styles.sectionTitleLine} />
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Ville</Text>
-            <Text style={styles.value}>{user.city || '—'}</Text>
-          </View>
+                <Text style={styles.sectionTitle}>
+                  LOCALISATION
+                </Text>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Latitude</Text>
-            <Text style={styles.value}>{user.latitude ?? '—'}</Text>
-          </View>
+                <View style={styles.sectionTitleLine} />
+              </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Longitude</Text>
-            <Text style={styles.value}>{user.longitude ?? '—'}</Text>
-          </View>
-        </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>VILLE</Text>
 
-        {/* NAVIGATION RAPIDE */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mes contenus</Text>
+                <Text
+                  style={styles.value}
+                  numberOfLines={1}
+                >
+                  {user.city || '—'}
+                </Text>
+              </View>
 
-          <TouchableOpacity
-            style={styles.navRow}
-            onPress={() => navigation.navigate('Lists')}
-          >
-            <Text style={styles.navLabel}>Mes listes</Text>
-            <Text style={styles.navArrow}>→</Text>
-          </TouchableOpacity>
+              <View style={styles.row}>
+                <Text style={styles.label}>LATITUDE</Text>
 
-          <TouchableOpacity
-            style={[styles.navRow, { borderBottomWidth: 0 }]}
-            onPress={() => navigation.navigate('Friends')}
-          >
-            <Text style={styles.navLabel}>Mes amis</Text>
-            <Text style={styles.navArrow}>→</Text>
-          </TouchableOpacity>
-        </View>
+                <Text style={styles.value}>
+                  {user.latitude ?? '—'}
+                </Text>
+              </View>
 
-        {/* ACTIONS */}
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditAccount')}>
-            <Text style={styles.editText}>Modifier le compte</Text>
-          </TouchableOpacity>
+              <View style={[styles.row, styles.lastRow]}>
+                <Text style={styles.label}>
+                  LONGITUDE
+                </Text>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutText}>Se déconnecter</Text>
-          </TouchableOpacity>
-        </View>
+                <Text style={styles.value}>
+                  {user.longitude ?? '—'}
+                </Text>
+              </View>
+            </View>
 
-      </ScrollView>
-    </SafeAreaView>
+            {/* NAVIGATION RAPIDE */}
+            <View style={styles.section}>
+              <View style={styles.sectionTitleContainer}>
+                <View style={styles.sectionTitleLine} />
+
+                <Text style={styles.sectionTitle}>
+                  MES CONTENUS
+                </Text>
+
+                <View style={styles.sectionTitleLine} />
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.navRow}
+                onPress={() =>
+                  navigation.navigate('Lists')
+                }
+              >
+                <Text style={styles.navLabel}>
+                  MES LISTES
+                </Text>
+
+                <Text style={styles.navArrow}>→</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={[
+                  styles.navRow,
+                  styles.lastRow,
+                ]}
+                onPress={() =>
+                  navigation.navigate('Friends')
+                }
+              >
+                <Text style={styles.navLabel}>
+                  MES AMIS
+                </Text>
+
+                <Text style={styles.navArrow}>→</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ACTIONS */}
+            <View style={styles.actions}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.editBtn}
+                onPress={() =>
+                  navigation.navigate('EditAccount')
+                }
+              >
+                <Text style={styles.editText}>
+                  MODIFIER LE COMPTE
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.logoutBtn}
+                onPress={logout}
+              >
+                <Text style={styles.logoutText}>
+                  SE DÉCONNECTER
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        )}
+      </View>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: C.bg },
-  center: { justifyContent: 'center', alignItems: 'center' },
+
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.lightGrey,
+  },
+
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+
+  topSafeArea: {
+    backgroundColor: COLORS.lightGrey,
+  },
+
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.lightGrey,
+  },
 
   container: {
-    padding: 16,
-    paddingBottom: 40,
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    backgroundColor: COLORS.lightGrey,
+  },
+
+  notFoundContainer: {
+    margin: 16,
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 14,
+  },
+
+  notFoundText: {
+    color: COLORS.black,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+
+  loadingHeaderTitle: {
+    flex: 1,
+    color: COLORS.black,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
 
   // TOP BAR
+
   topBar: {
+    minHeight: 82,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 22,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 28,
+    gap: 12,
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 14,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
 
   backBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
+    width: 42,
+    height: 42,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
   },
 
-  backText: { color: C.text, fontSize: 20, fontWeight: 'bold' },
+  backText: {
+    marginTop: -2,
+    color: COLORS.black,
+    fontSize: 23,
+    fontWeight: '900',
+  },
 
   // PROFIL
+
   profileInline: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
 
+  profileText: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: C.accent,
+    width: 48,
+    height: 48,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 24,
   },
 
   username: {
-    color: C.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-
-  city: {
-    color: C.muted,
-    fontSize: 12,
+    color: COLORS.black,
+    fontSize: 17,
+    fontWeight: '900',
   },
 
   // SECTIONS
+
   section: {
-    backgroundColor: C.surface,
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 6,
+    marginBottom: 18,
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    padding: 14,
-    marginBottom: 16,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
+  },
+
+  sectionTitleContainer: {
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  sectionTitleLine: {
+    flex: 1,
+    height: 2.5,
+    backgroundColor: COLORS.black,
   },
 
   sectionTitle: {
-    color: C.accent,
-    fontSize: 12,
-    fontWeight: '700',
+    marginHorizontal: 9,
+    color: COLORS.black,
+    fontSize: 11,
+    fontWeight: '900',
     letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    textAlign: 'center',
   },
 
   row: {
+    minHeight: 46,
+    paddingHorizontal: 4,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.black,
   },
 
-  label: { color: C.muted, fontSize: 14 },
-  value: { color: C.text, fontSize: 14, fontWeight: '500' },
-
-  // ACTIONS
-  actions: { gap: 12, marginTop: 4 },
-
-  editBtn: {
-    backgroundColor: C.accent,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+  lastRow: {
+    borderBottomWidth: 0,
   },
 
-  editText: { color: 'white', fontWeight: '700', fontSize: 15 },
-
-  logoutBtn: {
-    backgroundColor: C.card,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
+  label: {
+    color: COLORS.grey,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
   },
 
-  logoutText: { color: '#ff4d4d', fontWeight: '600', fontSize: 15 },
+  value: {
+    maxWidth: '60%',
+    color: COLORS.black,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+
+  // NAVIGATION
 
   navRow: {
+    minHeight: 52,
+    paddingHorizontal: 4,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    justifyContent: 'space-between',
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.black,
   },
-  navLabel: { color: C.text, fontSize: 14, fontWeight: '500' },
-  navArrow: { color: C.muted, fontSize: 16 },
+
+  navLabel: {
+    color: COLORS.black,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+
+  navArrow: {
+    color: COLORS.black,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+
+  // ACTIONS
+
+  actions: {
+    gap: 14,
+    marginTop: 4,
+  },
+
+  editBtn: {
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
+  },
+
+  editText: {
+    color: COLORS.black,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+
+  logoutBtn: {
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 3,
+    borderColor: COLORS.black,
+    borderRadius: 12,
+
+    shadowColor: COLORS.black,
+    shadowOffset: {
+      width: 4,
+      height: 4,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
+  },
+
+  logoutText: {
+    color: COLORS.red,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
 })
