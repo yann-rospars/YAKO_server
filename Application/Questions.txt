@@ -1,0 +1,15 @@
+HomeScreen :
+- Les cinema doivent garder des cadres comme les films ou s'alligner en liste
+- Des remarques sur le styles , notamment les contours
+
+AccountScreen et Modification : 
+- les titre de section on il un bpon style 
+- gardons nous 'Mes amis' le partages est important
+
+Liste Screen :
+- les tire de section sont il un bon style
+- les liste en block mieux que en liste ? 
+- garder les listes "Mes liste" ?
+	Argument pour : l'importation letter box dans une liste perso est mieux 
+- suppression des liste dispo ici ou dans la page details des listes
+- sections necessaire ? couleur suffiasante ? 
