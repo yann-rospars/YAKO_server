@@ -13,14 +13,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-
-const COLORS = {
-  primary: '#FFE17A',
-  white: '#FFFFFF',
-  black: '#111111',
-  grey: '#777777',
-  lightGrey: '#F4F1E8',
-}
+import { COLORS } from '../theme/colors'
 
 export default function ResetPasswordScreen({ setAuthFlow }: any) {
   const [password, setPassword] = useState('')
@@ -155,7 +148,7 @@ export default function ResetPasswordScreen({ setAuthFlow }: any) {
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator
                     size="small"
-                    color={COLORS.white}
+                    color={COLORS.icon}
                   />
 
                   <Text style={styles.primaryButtonText}>
@@ -201,6 +194,8 @@ export default function ResetPasswordScreen({ setAuthFlow }: any) {
 }
 
 const styles = StyleSheet.create({
+  // ── LAYOUT ───────────────────────────
+
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -212,94 +207,103 @@ const styles = StyleSheet.create({
 
   header: {
     minHeight: 80,
+
     paddingHorizontal: 22,
     paddingTop: 18,
     paddingBottom: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderBottomWidth: 3,
-    borderBottomColor: COLORS.black,
+    borderBottomColor: COLORS.contours,
   },
+
+  scrollView: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 34,
+
+    backgroundColor: COLORS.background,
+  },
+
+  // ── LOGO ─────────────────────────────
 
   logoContainer: {
     paddingHorizontal: 22,
     paddingVertical: 7,
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
   },
 
   logoText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 30,
     fontWeight: '900',
     letterSpacing: 4,
   },
 
-  scrollView: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 34,
-    backgroundColor: COLORS.white,
-  },
-
   decorativeLine: {
     width: 48,
     height: 7,
+
     alignSelf: 'center',
+
     marginBottom: 20,
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 50,
   },
 
+  // ── CARD ─────────────────────────────
+
   card: {
     width: '100%',
+
     padding: 20,
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 22,
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 7,
   },
 
   stepBadge: {
     alignSelf: 'flex-start',
+
     marginBottom: 18,
+
     paddingHorizontal: 12,
     paddingVertical: 7,
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 9,
   },
 
   stepBadgeText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.2,
@@ -310,7 +314,8 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 22,
     fontWeight: '900',
     lineHeight: 29,
@@ -319,11 +324,15 @@ const styles = StyleSheet.create({
 
   subtitle: {
     marginTop: 9,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 20,
   },
+
+  // ── FIELDS ───────────────────────────
 
   fieldContainer: {
     marginBottom: 20,
@@ -332,7 +341,9 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 8,
     marginLeft: 3,
-    color: COLORS.black,
+
+    color: COLORS.text1,
+
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.1,
@@ -345,81 +356,113 @@ const styles = StyleSheet.create({
 
   customPlaceholder: {
     position: 'absolute',
+
     zIndex: 1,
+
     left: 19,
     top: 17,
-    color: COLORS.grey,
-    fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif',
+
+    color: COLORS.text2,
+
+    fontFamily:
+      Platform.OS === 'ios'
+        ? 'Arial'
+        : 'sans-serif',
+
     fontSize: 15,
     fontWeight: '400',
   },
 
   input: {
     minHeight: 54,
+
     paddingHorizontal: 16,
     paddingVertical: 13,
-    color: COLORS.black,
-    backgroundColor: COLORS.white,
+
+    color: COLORS.text1,
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
+
     fontSize: 15,
     fontWeight: '400',
   },
 
+  // ── PRIMARY BUTTON ───────────────────
+
   primaryButton: {
     minHeight: 56,
+
     marginTop: 4,
     paddingHorizontal: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.black,
+
+    backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    shadowColor: COLORS.primary,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
 
   primaryButtonText: {
-    color: COLORS.white,
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.2,
+
     textAlign: 'center',
   },
 
+  // ── SECONDARY BUTTON ─────────────────
+
   secondaryButton: {
     minHeight: 56,
+
     marginTop: 14,
     paddingHorizontal: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    shadowColor: COLORS.black,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
 
   secondaryButtonText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.1,
+
     textAlign: 'center',
   },
 
@@ -432,10 +475,12 @@ const styles = StyleSheet.create({
         translateY: 3,
       },
     ],
+
     shadowOffset: {
       width: 1,
       height: 1,
     },
+
     elevation: 1,
     opacity: 0.9,
   },
@@ -447,121 +492,57 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+
     gap: 10,
   },
 
+  // ── INFORMATION ──────────────────────
+
   informationCard: {
     marginTop: 28,
+
     padding: 15,
+
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.lightGrey,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
   },
 
   informationIcon: {
     width: 30,
     height: 30,
+
     marginRight: 12,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+
+    backgroundColor: COLORS.warning,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 15,
   },
 
   informationIconText: {
-    color: COLORS.black,
+    color: COLORS.icon,
+
     fontSize: 15,
     fontWeight: '900',
   },
 
   informationText: {
     flex: 1,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,
   },
 })
-
-
-
-// import { useState } from 'react'
-// import { SafeAreaView, View, TextInput, Button, Text } from 'react-native'
-// import { supabase } from '../lib/supabase'
-
-// export default function ResetPasswordScreen({ setAuthFlow }: any) {
-//   const [password, setPassword] = useState('')
-//   const [confirmPassword, setConfirmPassword] = useState('')
-//   const [loading, setLoading] = useState(false)
-
-//   const handleReset = async () => {
-//     if (password.length < 6) {
-//       alert('Password must be at least 6 characters')
-//       return
-//     }
-
-//     if (password !== confirmPassword) {
-//       alert('Passwords do not match')
-//       return
-//     }
-
-//     setLoading(true)
-
-//     const { error } = await supabase.auth.updateUser({
-//       password,
-//     })
-
-//     setLoading(false)
-
-//     if (error) {
-//       alert(error.message)
-//     } else {
-//       alert('Password updated')
-
-//       // 🔥 on sort du flow reset
-//       setAuthFlow('login')
-//     }
-//   }
-
-//   return (
-//     <SafeAreaView style={{ flex: 1 }}>
-//       <View style={{ padding: 20 }}>
-//         <Text style={{ marginBottom: 20 }}>
-//           Reset your password
-//         </Text>
-
-//         <TextInput
-//           placeholder="New password"
-//           secureTextEntry
-//           value={password}
-//           onChangeText={setPassword}
-//           style={{ borderWidth: 1, marginBottom: 10 }}
-//         />
-
-//         <TextInput
-//           placeholder="Confirm password"
-//           secureTextEntry
-//           value={confirmPassword}
-//           onChangeText={setConfirmPassword}
-//           style={{ borderWidth: 1, marginBottom: 20 }}
-//         />
-
-//         <Button
-//           title={loading ? 'Updating...' : 'Update password'}
-//           onPress={handleReset}
-//           disabled={loading}
-//         />
-
-//         <Button
-//           title="Back to login"
-//           onPress={() => setAuthFlow('login')}
-//         />
-//       </View>
-//     </SafeAreaView>
-//   )
-// }

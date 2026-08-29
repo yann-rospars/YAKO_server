@@ -1,37 +1,74 @@
-import { ScrollView, TouchableOpacity, Text, View, StyleSheet } from 'react-native'
-import { C } from '../theme/colors'
+import {
+  ScrollView,
+  TouchableOpacity,
+  Text,
+  View,
+  StyleSheet,
+} from 'react-native'
+import { COLORS } from '../theme/colors'
 
 type Props = {
-  days: { key: string; label: string }[]
+  days: {
+    key: string
+    label: string
+  }[]
   selectedDate: string | null
-  setSelectedDate: (d: string) => void
+  setSelectedDate: (date: string) => void
 }
 
-export default function SessionCalendar({ days, selectedDate, setSelectedDate }: Props) {
+export default function SessionCalendar({
+  days,
+  selectedDate,
+  setSelectedDate,
+}: Props) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingVertical: 4 }}
+      contentContainerStyle={styles.content}
     >
       {days.map((day, index) => {
-        const prev = days[index - 1]
-        const isGap = prev
-          ? new Date(day.key).getTime() - new Date(prev.key).getTime() > 86400000
+        const previousDay = days[index - 1]
+
+        const isGap = previousDay
+          ? new Date(day.key).getTime() -
+              new Date(previousDay.key).getTime() >
+            86400000
           : false
-        const isSelected = selectedDate === day.key
+
+        const isSelected =
+          selectedDate === day.key
 
         return (
-          <View key={day.key} style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            key={day.key}
+            style={styles.dayWrapper}
+          >
             {isGap && (
-              <Text style={styles.gap}>···</Text>
+              <Text style={styles.gap}>
+                ···
+              </Text>
             )}
+
             <TouchableOpacity
-              onPress={() => setSelectedDate(day.key)}
-              style={[styles.btn, isSelected && styles.selected]}
+              activeOpacity={0.8}
+              onPress={() =>
+                setSelectedDate(day.key)
+              }
+              style={[
+                styles.dayButton,
+                isSelected &&
+                  styles.dayButtonSelected,
+              ]}
             >
-              <Text style={[styles.text, isSelected && styles.textSelected]}>
-                {day.label}
+              <Text
+                style={[
+                  styles.dayText,
+                  isSelected &&
+                    styles.dayTextSelected,
+                ]}
+              >
+                {day.label.toUpperCase()}
               </Text>
             </TouchableOpacity>
           </View>
@@ -42,31 +79,71 @@ export default function SessionCalendar({ days, selectedDate, setSelectedDate }:
 }
 
 const styles = StyleSheet.create({
-  btn: {
-    marginRight: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
+  // ── LAYOUT ───────────────────────────
+
+  content: {
+    paddingVertical: 6,
+    paddingRight: 4,
   },
-  selected: {
-    backgroundColor: C.accent,
-    borderColor: C.accent,
+
+  dayWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  text: {
-    color: C.muted,
-    fontWeight: '600',
-    fontSize: 12,
+
+  // ── DAY BUTTON ───────────────────────
+
+  dayButton: {
+    minHeight: 42,
+
+    marginRight: 10,
+    paddingHorizontal: 13,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: COLORS.secondary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 11,
+
+    shadowColor: COLORS.contours,
+    shadowOffset: {
+      width: 3,
+      height: 3,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+
+    elevation: 4,
   },
-  textSelected: {
-    color: 'white',
+
+  dayButtonSelected: {
+    backgroundColor: COLORS.primary,
   },
+
+  dayText: {
+    color: COLORS.text2,
+
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+
+  dayTextSelected: {
+    color: COLORS.text2,
+  },
+
+  // ── GAP ──────────────────────────────
+
   gap: {
-    color: C.muted,
-    marginRight: 8,
-    fontSize: 14,
+    marginRight: 10,
+
+    color: COLORS.text2,
+
+    fontSize: 15,
+    fontWeight: '900',
     letterSpacing: 2,
   },
 })

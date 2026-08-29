@@ -6,14 +6,7 @@ import {
   View,
 } from 'react-native'
 import { Movie } from '../types/movie'
-
-const COLORS = {
-  primary: '#FFE17A',
-  white: '#FFFFFF',
-  black: '#111111',
-  grey: '#777777',
-  lightGrey: '#F4F1E8',
-}
+import { COLORS } from '../theme/colors'
 
 type Props = {
   movie: Movie
@@ -118,33 +111,50 @@ const styles = StyleSheet.create({
         translateY: 2,
       },
     ],
+
+    shadowOffset: {
+      width: 1,
+      height: 1,
+    },
+
     opacity: 0.9,
   },
 
   card: {
     flex: 1,
+
     overflow: 'hidden',
-    backgroundColor: COLORS.white,
-    borderWidth: 2.5,
-    borderColor: COLORS.black,
-    borderRadius: 10,
-    shadowColor: COLORS.black,
+
+    backgroundColor: COLORS.secondary,
+
+    borderWidth: 1.5,
+    borderColor: COLORS.contours,
+
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 3,
       height: 3,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
+
+  // ── POSTER ───────────────────────────
 
   posterContainer: {
     width: '100%',
     aspectRatio: 2 / 3,
+
     overflow: 'hidden',
-    backgroundColor: COLORS.lightGrey,
-    borderBottomWidth: 2.5,
-    borderBottomColor: COLORS.black,
+
+    backgroundColor: COLORS.background,
   },
 
   poster: {
@@ -154,35 +164,50 @@ const styles = StyleSheet.create({
 
   posterPlaceholder: {
     flex: 1,
+
     paddingHorizontal: 5,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
   },
 
   placeholderIcon: {
     marginBottom: 8,
+
     fontSize: 24,
   },
 
   placeholderText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 7,
     fontWeight: '900',
     lineHeight: 10,
     letterSpacing: 0.4,
+
     textAlign: 'center',
   },
+
+  // ── INFORMATION ──────────────────────
 
   information: {
     paddingHorizontal: 7,
     paddingTop: 7,
     paddingBottom: 6,
+
+    backgroundColor: COLORS.secondary,
+
+    borderTopWidth: 1.5,
+    borderTopColor: COLORS.contours,
   },
 
   title: {
     height: 24,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 10,
     fontWeight: '900',
     lineHeight: 12,
@@ -190,7 +215,9 @@ const styles = StyleSheet.create({
 
   releaseYear: {
     marginTop: 2,
-    color: COLORS.grey,
+
+    color: COLORS.ghostText,
+
     fontSize: 9,
     fontWeight: '800',
   },

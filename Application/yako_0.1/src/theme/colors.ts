@@ -1,12 +1,13 @@
-export const C = {
-  bg: '#0D0D0D',
-  surface: '#1A1A1A',
-  card: '#242424',
-  accent: '#FF6B35',
-  accentSoft: '#FF6B3522',
-  green: '#00E5A0',
-  greenSoft: '#00E5A022',
-  text: '#F5F5F5',
-  muted: '#888',
-  border: '#2E2E2E',
+export const COLORS = {
+  primary: '#FFE17A',
+  secondary: '#FFFFFF',
+  contours: '#111111',
+  background: '#FFFFFF',
+  text1: '#FFFFFF',
+  text2: '#111111',
+  important: '#E36262',
+  warning: '#F5C227',
+  icon: '#111111',
+  return: '#111111',
+  ghostText: '#777777'
 }

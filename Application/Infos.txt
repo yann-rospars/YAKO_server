@@ -95,6 +95,7 @@ npm install @react-native-async-storage/async-storage
 npm install expo-auth-session expo-web-browser
 npm install react-native-safe-area-context
 npm install @react-navigation/native-stack
-
+npx expo install @expo/vector-icons
+npx expo install @react-navigation/bottom-tabs
 
 

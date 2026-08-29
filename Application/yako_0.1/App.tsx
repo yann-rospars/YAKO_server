@@ -11,6 +11,7 @@ import MovieScreen from './src/screens/MovieScreen'
 import EditAccountScreen from './src/screens/EditAccountScreen'
 import FriendScreen from './src/screens/FriendScreen'
 import MainTabs from './src/navigation/MainTabs'
+import CinemaScreen from './src/screens/CinemaScreen'
 
 // 🔥 NAVIGATION
 import { NavigationContainer } from '@react-navigation/native'
@@ -124,7 +125,7 @@ export default function App() {
           name="Movie"
           component={MovieScreen}
           options={{
-            animation: 'slide_from_right',
+            animation: 'none',
           }}
         />
 
@@ -132,7 +133,7 @@ export default function App() {
           name="ListDetail"
           component={ListDetailScreen}
           options={{
-            animation: 'slide_from_right',
+            animation: 'none',
           }}
         />
 
@@ -149,6 +150,15 @@ export default function App() {
           component={FriendScreen}
           options={{
             animation: 'slide_from_right',
+          }}
+        />
+
+        <Stack.Screen
+          name="Cinema"
+          component={CinemaScreen}
+          options={{
+            headerShown: false,
+            animation: 'none',
           }}
         />
       </Stack.Navigator>

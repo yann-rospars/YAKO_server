@@ -389,6 +389,49 @@ FOR DELETE
 USING (auth.uid() = user_id AND type != 'system');
 
 ---------------------------------------
+-- POLICY IMPORTANTES POUR LES List_movies
+---------------------------------------
+
+CREATE POLICY "Users can read movies from their own lists"
+ON public.list_movies
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.lists
+    WHERE public.lists.id = list_movies.list_id
+      AND public.lists.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can add movies to their own lists"
+ON public.list_movies
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.lists
+    WHERE public.lists.id = list_movies.list_id
+      AND public.lists.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can remove movies from their own lists"
+ON public.list_movies
+FOR DELETE
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.lists
+    WHERE public.lists.id = list_movies.list_id
+      AND public.lists.user_id = auth.uid()
+  )
+);
+
+---------------------------------------
 -- INDEX IMPORTANTS POUR LES RECHERCHES
 ---------------------------------------
 
@@ -411,6 +454,8 @@ CREATE INDEX IF NOT EXISTS idx_notification_events_user_status ON notification_e
 CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_auth_providers_user_id ON user_auth_providers(user_id);
+
+
 
 ---------------------------------------
 -- Commandes

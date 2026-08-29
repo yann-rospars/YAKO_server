@@ -9,6 +9,11 @@ import {
   Linking,
   StyleSheet,
   StatusBar,
+  Modal,
+  TextInput,
+  Pressable,
+  FlatList,
+  Keyboard,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -20,17 +25,17 @@ import SessionCard from '../components/SessionCard'
 import SessionCalendar from '../components/SessionCalendar'
 import Badge from '../components/ui/Badge'
 import LoadingState from '../components/LoadingState'
-
-const COLORS = {
-  primary: '#FFE17A',
-  white: '#FFFFFF',
-  black: '#111111',
-  grey: '#777777',
-  lightGrey: '#F4F1E8',
-}
+import { COLORS } from '../theme/colors'
 
 const getDateKey = (date: string) =>
   date.split('T')[0] || date.split(' ')[0]
+
+type MovieListItem = {
+  id: number
+  name: string
+  type: 'system' | 'custom'
+  containsMovie: boolean
+}
 
 export default function MovieScreen({
   route,
@@ -59,6 +64,21 @@ export default function MovieScreen({
     useState(true)
 
   const [showFullSynopsis, setShowFullSynopsis] = useState(false)
+
+  const [listModalVisible, setListModalVisible] =
+    useState(false)
+
+  const [movieLists, setMovieLists] =
+    useState<MovieListItem[]>([])
+
+  const [listSearch, setListSearch] =
+    useState('')
+
+  const [listsLoading, setListsLoading] =
+    useState(false)
+
+  const [addingToListId, setAddingToListId] =
+    useState<number | null>(null)
 
   useEffect(() => {
     fetchMovie()
@@ -206,6 +226,191 @@ export default function MovieScreen({
     setSessionsLoading(false)
   }
 
+  const fetchMovieLists = async () => {
+    setListsLoading(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setListsLoading(false)
+      return
+    }
+
+    const {
+      data: listsData,
+      error: listsError,
+    } = await supabase
+      .from('lists')
+      .select('id, name, type')
+      .eq('user_id', user.id)
+      .neq('name', 'Déjà notées')
+
+    if (listsError) {
+      console.error(listsError)
+      setListsLoading(false)
+      return
+    }
+
+    const listIds = (listsData ?? []).map(
+      (list: any) => list.id
+    )
+
+    let existingListIds =
+      new Set<number>()
+
+    if (listIds.length > 0) {
+      const {
+        data: existingRows,
+        error: existingError,
+      } = await supabase
+        .from('list_movies')
+        .select('list_id')
+        .eq('movie_id', movieId)
+        .in('list_id', listIds)
+
+      if (existingError) {
+        console.error(existingError)
+      } else {
+        existingListIds = new Set(
+          (existingRows ?? []).map(
+            (row: any) => row.list_id
+          )
+        )
+      }
+    }
+
+    const formatted: MovieListItem[] =
+      (listsData ?? []).map((list) => ({
+        id: list.id,
+        name: list.name,
+        type: list.type,
+        containsMovie: existingListIds.has(
+          list.id
+        ),
+      }))
+
+    formatted.sort((a, b) => {
+      // Les listes système d'abord
+      if (a.type !== b.type) {
+        return a.type === 'system'
+          ? -1
+          : 1
+      }
+
+      // Puis ordre alphabétique
+      return a.name.localeCompare(b.name)
+    })
+
+    setMovieLists(formatted)
+    setListsLoading(false)
+  }
+
+  const openListModal = () => {
+    setListSearch('')
+    setListModalVisible(true)
+    fetchMovieLists()
+  }
+
+  const closeListModal = () => {
+    setListModalVisible(false)
+    setListSearch('')
+  }
+
+  const addMovieToList = async (
+    listId: number
+  ) => {
+    const selectedList = movieLists.find(
+      (list) => list.id === listId
+    )
+
+    if (
+      !selectedList ||
+      selectedList.containsMovie
+    ) {
+      return
+    }
+
+    setAddingToListId(listId)
+
+    const { error } = await supabase
+      .from('list_movies')
+      .insert({
+        list_id: listId,
+        movie_id: movieId,
+      })
+
+    setAddingToListId(null)
+
+    if (error) {
+      if (error.code === '23505') {
+        setMovieLists((currentLists) =>
+          currentLists.map((list) =>
+            list.id === listId
+              ? {
+                  ...list,
+                  containsMovie: true,
+                }
+              : list
+          )
+        )
+
+        return
+      }
+
+      console.error(error)
+      alert(
+        "Impossible d'ajouter le film à cette liste."
+      )
+      return
+    }
+
+    setMovieLists((currentLists) =>
+      currentLists.map((list) =>
+        list.id === listId
+          ? {
+              ...list,
+              containsMovie: true,
+            }
+          : list
+      )
+    )
+  }
+
+  const removeMovieFromList = async (
+    listId: number
+  ) => {
+    setAddingToListId(listId)
+
+    const { error } = await supabase
+      .from('list_movies')
+      .delete()
+      .eq('list_id', listId)
+      .eq('movie_id', movieId)
+
+    setAddingToListId(null)
+
+    if (error) {
+      console.error(error)
+      alert(
+        "Impossible de retirer le film de cette liste."
+      )
+      return
+    }
+
+    setMovieLists((currentLists) =>
+      currentLists.map((list) =>
+        list.id === listId
+          ? {
+              ...list,
+              containsMovie: false,
+            }
+          : list
+      )
+    )
+  }
+
   const getPoster = () => {
     if (!movie?.poster_path) {
       return null
@@ -298,6 +503,15 @@ export default function MovieScreen({
         getDateKey(
           session.starts_at
         ) === selectedDate
+    )
+
+  const filteredMovieLists =
+    movieLists.filter((list) =>
+      list.name
+        .toLowerCase()
+        .includes(
+          listSearch.trim().toLowerCase()
+        )
     )
 
   const renderSectionTitle = (
@@ -565,6 +779,7 @@ export default function MovieScreen({
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.addBtn}
+                onPress={openListModal}
               >
                 <Text
                   style={
@@ -612,35 +827,38 @@ export default function MovieScreen({
 
           {/* SYNOPSIS */}
           <View style={styles.section}>
-            {renderSectionTitle(
-              'SYNOPSIS'
-            )}
+            <View style={styles.synopsisCard}>
+              <Text style={styles.synopsisTitle}>
+                SYNOPSIS
+              </Text>
 
-            <View
-              style={
-                styles.synopsisCard
-              }
-            >
               <Text
                 style={styles.synopsisText}
-                numberOfLines={showFullSynopsis ? undefined : 5}
+                numberOfLines={
+                  showFullSynopsis ? undefined : 5
+                }
               >
-                {movie.overview || 'Aucune description disponible.'}
+                {movie.overview ||
+                  'Aucune description disponible.'}
               </Text>
+
               {movie.overview &&
                 movie.overview.length > 250 && (
                   <TouchableOpacity
+                    activeOpacity={0.7}
                     onPress={() =>
-                      setShowFullSynopsis(!showFullSynopsis)
+                      setShowFullSynopsis(
+                        !showFullSynopsis
+                      )
                     }
                   >
                     <Text style={styles.moreText}>
                       {showFullSynopsis
-                        ? 'Afficher moins ▲'
-                        : 'Afficher plus ▼'}
+                        ? 'AFFICHER MOINS ▲'
+                        : 'AFFICHER PLUS ▼'}
                     </Text>
                   </TouchableOpacity>
-              )}
+                )}
             </View>
           </View>
 
@@ -658,7 +876,7 @@ export default function MovieScreen({
               >
                 <ActivityIndicator
                   size="large"
-                  color={COLORS.black}
+                  color={COLORS.icon}
                 />
 
                 <Text
@@ -732,6 +950,196 @@ export default function MovieScreen({
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={listModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeListModal}
+      >
+        <View style={styles.listModalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeListModal}
+          />
+
+          <View style={styles.listModalBox}>
+            <View style={styles.listModalHeader}>
+              <Text style={styles.listModalTitle}>
+                AJOUTER À UNE LISTE
+              </Text>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={closeListModal}
+                style={styles.listModalClose}
+              >
+                <Text
+                  style={
+                    styles.listModalCloseText
+                  }
+                >
+                  ×
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={
+                styles.listSearchContainer
+              }
+            >
+              <Text
+                style={styles.listSearchIcon}
+              >
+                ⌕
+              </Text>
+
+              <TextInput
+                value={listSearch}
+                onChangeText={setListSearch}
+                placeholder="Rechercher une liste..."
+                placeholderTextColor={
+                  COLORS.ghostText
+                }
+                autoCorrect={false}
+                allowFontScaling={false}
+                style={styles.listSearchInput}
+              />
+
+              {listSearch.length > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    setListSearch('')
+                  }
+                  style={
+                    styles.listSearchClear
+                  }
+                >
+                  <Text
+                    style={
+                      styles.listSearchClearText
+                    }
+                  >
+                    ×
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {listsLoading ? (
+              <View
+                style={
+                  styles.listModalLoading
+                }
+              >
+                <ActivityIndicator
+                  size="large"
+                  color={COLORS.icon}
+                />
+
+                <Text
+                  style={
+                    styles.listModalLoadingText
+                  }
+                >
+                  CHARGEMENT DES LISTES...
+                </Text>
+              </View>
+            ) : filteredMovieLists.length ===
+              0 ? (
+              <Pressable
+                style={styles.listModalEmpty}
+                onPress={() => Keyboard.dismiss()}
+              >
+                <Text style={styles.listModalEmptyText}>
+                  {listSearch.trim()
+                    ? 'AUCUNE LISTE TROUVÉE'
+                    : 'AUCUNE LISTE DISPONIBLE'}
+                </Text>
+              </Pressable>
+            ) : (
+              <FlatList
+                data={filteredMovieLists}
+                keyExtractor={(item) =>
+                  String(item.id)
+                }
+                style={styles.listsFlatList}
+                contentContainerStyle={
+                  styles.listsFlatListContent
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const isAdding =
+                    addingToListId === item.id
+
+                  return (
+                    <View
+                      style={
+                        styles.movieListRow
+                      }
+                    >
+                      <View
+                        style={
+                          styles.movieListInformation
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.movieListName
+                          }
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {item.name}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        disabled={isAdding}
+                        onPress={() =>
+                          item.containsMovie
+                            ? removeMovieFromList(item.id)
+                            : addMovieToList(item.id)
+                        }
+                        style={[
+                          styles.addToListButton,
+                          item.containsMovie &&
+                            styles.removeFromListButton,
+                        ]}
+                      >
+                        {isAdding ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={COLORS.icon}
+                          />
+                        ) : (
+                          <Text
+                            style={[
+                              styles.addToListButtonText,
+                              item.containsMovie &&
+                                styles.addedToListButtonText,
+                            ]}
+                          >
+                            {item.containsMovie
+                              ? 'RETIRER'
+                              : 'AJOUTER'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -739,22 +1147,24 @@ export default function MovieScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.lightGrey,
+    backgroundColor: COLORS.background,
   },
 
   scrollContent: {
     paddingBottom: 40,
-    backgroundColor: COLORS.lightGrey,
+    backgroundColor: COLORS.background,
   },
 
-  // HERO
+  // ── HERO ─────────────────────────────
 
   hero: {
     height: 220,
     overflow: 'hidden',
+
     backgroundColor: COLORS.primary,
+
     borderBottomWidth: 3,
-    borderBottomColor: COLORS.black,
+    borderBottomColor: COLORS.contours,
   },
 
   backdrop: {
@@ -765,8 +1175,10 @@ const styles = StyleSheet.create({
   backdropPlaceholder: {
     width: '100%',
     height: '100%',
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
   },
 
@@ -774,40 +1186,51 @@ const styles = StyleSheet.create({
     fontSize: 52,
   },
 
+  // ── BACK BUTTON ──────────────────────
+
   backBtn: {
     position: 'absolute',
     top: 16,
     left: 16,
+
     width: 44,
     height: 44,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 12,
 
-    shadowColor: COLORS.black,
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 3,
       height: 3,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 5,
   },
 
   backBtnText: {
     marginTop: -2,
-    color: COLORS.black,
+
+    color: COLORS.return,
+
     fontSize: 24,
     fontWeight: '900',
   },
 
-  // HEADER DU FILM
+  // ── MOVIE HEADER ─────────────────────
+
   movieHeader: {
     marginHorizontal: 16,
     marginTop: -40,
+
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -815,11 +1238,14 @@ const styles = StyleSheet.create({
   posterContainer: {
     width: 120,
     aspectRatio: 2 / 3,
+
     overflow: 'hidden',
     flexShrink: 0,
-    backgroundColor: COLORS.primary,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 11,
   },
 
@@ -830,9 +1256,12 @@ const styles = StyleSheet.create({
 
   posterPlaceholder: {
     flex: 1,
+
     paddingHorizontal: 5,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
   },
 
@@ -842,23 +1271,27 @@ const styles = StyleSheet.create({
   },
 
   posterPlaceholderText: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 8,
     fontWeight: '900',
     lineHeight: 11,
     letterSpacing: 0.5,
+
     textAlign: 'center',
   },
 
   movieInformation: {
     flex: 1,
     minWidth: 0,
+
     paddingLeft: 14,
     paddingTop: 50,
   },
 
   title: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 18,
     fontWeight: '900',
     lineHeight: 21,
@@ -866,7 +1299,9 @@ const styles = StyleSheet.create({
 
   subtitle: {
     marginTop: 4,
-    color: COLORS.grey,
+
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
@@ -874,7 +1309,9 @@ const styles = StyleSheet.create({
 
   director: {
     marginTop: 4,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 9,
     fontWeight: '900',
     lineHeight: 12,
@@ -883,13 +1320,18 @@ const styles = StyleSheet.create({
 
   badges: {
     marginTop: 8,
+
     flexDirection: 'row',
     flexWrap: 'wrap',
+
     gap: 5,
   },
 
+  // ── RATING / ADD ─────────────────────
+
   actionsRow: {
     marginTop: 2,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -898,27 +1340,33 @@ const styles = StyleSheet.create({
   ratingBox: {
     flex: 1,
     minWidth: 0,
+
     flexDirection: 'row',
     alignItems: 'baseline',
     flexWrap: 'wrap',
   },
 
   ratingValue: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 22,
     fontWeight: '900',
   },
 
   ratingText: {
     marginLeft: 3,
-    color: COLORS.grey,
+
+    color: COLORS.text2,
+
     fontSize: 10,
     fontWeight: '900',
   },
 
   ratingCount: {
     marginLeft: 6,
-    color: COLORS.grey,
+
+    color: COLORS.text2,
+
     fontSize: 8,
     fontWeight: '700',
   },
@@ -926,73 +1374,92 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 38,
     height: 38,
+
     flexShrink: 0,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 11,
 
-    shadowColor: COLORS.black,
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 2,
       height: 2,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 3,
   },
 
   addBtnText: {
     marginTop: -3,
-    color: COLORS.black,
+
+    color: COLORS.icon,
+
     fontSize: 25,
     fontWeight: '900',
   },
 
-  // BODY
+  // ── BODY ─────────────────────────────
 
   body: {
     paddingHorizontal: 16,
     paddingTop: 22,
   },
 
+  // ── TRAILER BUTTON ───────────────────
+
   trailerBtn: {
     minHeight: 52,
+
     marginBottom: 24,
     paddingHorizontal: 16,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+
     gap: 10,
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 12,
 
-    shadowColor: COLORS.black,
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 5,
   },
 
   trailerBtnIcon: {
-    color: COLORS.black,
+    color: COLORS.icon,
+
     fontSize: 14,
     fontWeight: '900',
   },
 
   trailerBtnText: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1,
   },
+
+  // ── SECTIONS ─────────────────────────
 
   section: {
     marginBottom: 28,
@@ -1000,6 +1467,7 @@ const styles = StyleSheet.create({
 
   sectionTitleContainer: {
     marginBottom: 14,
+
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1007,37 +1475,47 @@ const styles = StyleSheet.create({
   sectionTitleLine: {
     flex: 1,
     height: 3,
-    backgroundColor: COLORS.black,
+
+    backgroundColor: COLORS.contours,
   },
 
   sectionTitle: {
     marginHorizontal: 10,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1,
+
     textAlign: 'center',
   },
 
+  // ── SYNOPSIS ─────────────────────────
+
   synopsisCard: {
     padding: 15,
-    backgroundColor: COLORS.white,
-    borderWidth: 3,
-    borderColor: COLORS.black,
-    borderRadius: 14,
 
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 4,
-      height: 4,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
+    backgroundColor: COLORS.secondary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 14,
+  },
+
+  synopsisTitle: {
+    marginBottom: 10,
+
+    color: COLORS.text2,
+
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 
   synopsisText: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 20,
@@ -1045,13 +1523,16 @@ const styles = StyleSheet.create({
 
   moreText: {
     marginTop: 12,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '900',
+
     textAlign: 'center',
   },
 
-  // SÉANCES
+  // ── SESSIONS ─────────────────────────
 
   sessionsList: {
     marginTop: 16,
@@ -1059,18 +1540,24 @@ const styles = StyleSheet.create({
 
   sessionsLoading: {
     minHeight: 130,
+
     padding: 20,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
   },
 
   sessionsLoadingText: {
     marginTop: 12,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.8,
@@ -1078,61 +1565,371 @@ const styles = StyleSheet.create({
 
   noSessionsCard: {
     minHeight: 90,
+
     padding: 18,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
   },
 
   noSessionsText: {
-    color: COLORS.grey,
+    color: COLORS.text2,
+
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.8,
+
     textAlign: 'center',
   },
 
-  // NOT FOUND
+  // ── NOT FOUND ────────────────────────
 
   notFoundContainer: {
     flex: 1,
+
     margin: 20,
     padding: 24,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
   },
 
   notFoundText: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1,
+
     textAlign: 'center',
   },
 
   notFoundButton: {
     minHeight: 46,
+
     marginTop: 20,
     paddingHorizontal: 22,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 11,
+
+    shadowColor: COLORS.contours,
+    shadowOffset: {
+      width: 3,
+      height: 3,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+
+    elevation: 4,
   },
 
   notFoundButtonText: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+
+  // ── LIST MODAL ───────────────────────
+
+  listModalOverlay: {
+    flex: 1,
+
+    paddingHorizontal: 18,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+
+  listModalBox: {
+    width: '100%',
+    maxHeight: '72%',
+
+    padding: 16,
+
+    backgroundColor: COLORS.background,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 16,
+  },
+
+  listModalHeader: {
+    minHeight: 42,
+
+    marginBottom: 14,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  listModalTitle: {
+    flex: 1,
+
+    color: COLORS.text2,
+
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+
+  listModalClose: {
+    width: 36,
+    height: 36,
+
+    marginLeft: 12,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: COLORS.primary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 10,
+
+    shadowColor: COLORS.contours,
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+
+    elevation: 3,
+  },
+
+  listModalCloseText: {
+    marginTop: -3,
+
+    color: COLORS.icon,
+
+    fontSize: 24,
+    fontWeight: '900',
+  },
+
+  // ── LIST SEARCH ──────────────────────
+
+  listSearchContainer: {
+    minHeight: 48,
+
+    marginBottom: 14,
+    paddingHorizontal: 10,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    backgroundColor: COLORS.secondary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 11,
+  },
+
+  listSearchIcon: {
+    width: 26,
+
+    color: COLORS.icon,
+
+    fontSize: 25,
+    fontWeight: '900',
+
+    textAlign: 'center',
+  },
+
+  listSearchInput: {
+    flex: 1,
+
+    minHeight: 45,
+
+    paddingHorizontal: 8,
+    paddingVertical: 0,
+
+    color: COLORS.text2,
+
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  listSearchClear: {
+    width: 28,
+    height: 28,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: COLORS.primary,
+
+    borderWidth: 2,
+    borderColor: COLORS.contours,
+    borderRadius: 14,
+
+    shadowColor: COLORS.contours,
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+
+    elevation: 3,
+  },
+
+  listSearchClearText: {
+    marginTop: -2,
+
+    color: COLORS.icon,
+
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  // ── LIST CONTENT ─────────────────────
+
+  listsFlatList: {
+    flexGrow: 0,
+  },
+
+  listsFlatListContent: {
+    paddingBottom: 4,
+  },
+
+  movieListRow: {
+    minHeight: 62,
+
+    marginBottom: 10,
+    padding: 10,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    gap: 10,
+
+    backgroundColor: COLORS.secondary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 12,
+  },
+
+  movieListInformation: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  movieListName: {
+    color: COLORS.text2,
+
+    fontSize: 13,
+    fontWeight: '900',
+  },
+
+  // ── ADD / REMOVE LIST BUTTON ─────────
+
+  addToListButton: {
+    width: 82,
+    minHeight: 36,
+
+    flexShrink: 0,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: COLORS.primary,
+
+    borderWidth: 3,
+    borderColor: COLORS.contours,
+    borderRadius: 9,
+
+    shadowColor: COLORS.contours,
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+
+    elevation: 3,
+  },
+
+  removeFromListButton: {
+    backgroundColor: COLORS.important,
+  },
+
+  addedToListButton: {
+    backgroundColor: COLORS.important,
+  },
+
+  addToListButtonText: {
+    color: COLORS.text2,
+
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+
+  addedToListButtonText: {
+    color: COLORS.text2,
+  },
+
+  // ── MODAL STATES ─────────────────────
+
+  listModalLoading: {
+    minHeight: 170,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  listModalLoadingText: {
+    marginTop: 12,
+
+    color: COLORS.text2,
+
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+
+  listModalEmpty: {
+    minHeight: 90,
+
+    paddingHorizontal: 12,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  listModalEmptyText: {
+    color: COLORS.text2,
+
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+
+    textAlign: 'center',
   },
 })

@@ -12,14 +12,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-
-const COLORS = {
-  primary: '#FFE17A',
-  white: '#FFFFFF',
-  black: '#111111',
-  grey: '#777777',
-  lightGrey: '#F4F1E8',
-}
+import { COLORS } from '../theme/colors'
 
 export default function AuthScreen({ setAuthFlow }: any) {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
@@ -379,7 +372,7 @@ export default function AuthScreen({ setAuthFlow }: any) {
 
                       <TextInput
                         placeholder="00000000"
-                        placeholderTextColor={COLORS.grey}
+                        placeholderTextColor={COLORS.text2}
                         onChangeText={setOtp}
                         value={otp}
                         keyboardType="number-pad"
@@ -473,6 +466,8 @@ export default function AuthScreen({ setAuthFlow }: any) {
 }
 
 const styles = StyleSheet.create({
+  // ── LAYOUT ───────────────────────────
+
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -487,32 +482,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 18,
     paddingBottom: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderBottomWidth: 3,
-    borderBottomColor: COLORS.black,
+    borderBottomColor: COLORS.contours,
   },
+
+  scrollView: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 32,
+  },
+
+  // ── LOGO ─────────────────────────────
 
   logoContainer: {
     paddingHorizontal: 22,
     paddingVertical: 7,
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 14,
-    shadowColor: COLORS.black,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 5,
   },
 
   logoText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 30,
     fontWeight: '900',
     letterSpacing: 4,
@@ -520,50 +538,41 @@ const styles = StyleSheet.create({
 
   headerCaption: {
     marginTop: 14,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2,
   },
 
-  scrollView: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 32,
-  },
-
   decorativeLine: {
     width: 48,
     height: 7,
+
     alignSelf: 'center',
+
     marginBottom: 20,
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 50,
   },
 
+  // ── CARD ─────────────────────────────
+
   card: {
     width: '100%',
+
     padding: 20,
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 22,
-    shadowColor: COLORS.black,
-    shadowOffset: {
-      width: 6,
-      height: 6,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 7,
   },
 
   titleContainer: {
@@ -571,7 +580,8 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 25,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -579,11 +589,15 @@ const styles = StyleSheet.create({
 
   subtitle: {
     marginTop: 8,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 20,
   },
+
+  // ── FIELDS ───────────────────────────
 
   fieldContainer: {
     marginBottom: 18,
@@ -592,7 +606,9 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 8,
     marginLeft: 3,
-    color: COLORS.black,
+
+    color: COLORS.text1,
+
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1.2,
@@ -605,89 +621,128 @@ const styles = StyleSheet.create({
 
   input: {
     minHeight: 54,
+
     paddingHorizontal: 16,
     paddingVertical: 13,
-    color: COLORS.black,
-    backgroundColor: COLORS.white,
+
+    color: COLORS.text1,
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif',
+
+    fontFamily:
+      Platform.OS === 'ios'
+        ? 'Arial'
+        : 'sans-serif',
+
     fontSize: 15,
     fontWeight: '400',
   },
 
   customPlaceholder: {
     position: 'absolute',
+
     zIndex: 1,
+
     left: 19,
     top: 17,
-    color: COLORS.grey,
-    fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif',
+
+    color: COLORS.text2,
+
+    fontFamily:
+      Platform.OS === 'ios'
+        ? 'Arial'
+        : 'sans-serif',
+
     fontSize: 15,
     fontWeight: '400',
   },
 
   otpInput: {
     minHeight: 64,
+
     fontSize: 25,
     fontWeight: '900',
     letterSpacing: 10,
   },
 
+  // ── PRIMARY BUTTON ───────────────────
+
   primaryButton: {
     minHeight: 55,
+
     marginTop: 4,
+
     paddingHorizontal: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.black,
+
+    backgroundColor: COLORS.primary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    shadowColor: COLORS.primary,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
 
   primaryButtonText: {
-    color: COLORS.white,
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.3,
+
     textAlign: 'center',
   },
 
+  // ── SECONDARY BUTTON ─────────────────
+
   secondaryButton: {
     minHeight: 55,
+
     marginTop: 14,
+
     paddingHorizontal: 16,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    shadowColor: COLORS.black,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
 
   secondaryButtonText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.1,
+
     textAlign: 'center',
   },
 
@@ -700,17 +755,23 @@ const styles = StyleSheet.create({
         translateY: 3,
       },
     ],
+
     shadowOffset: {
       width: 1,
       height: 1,
     },
+
     elevation: 1,
     opacity: 0.9,
   },
 
+  // ── TEXT BUTTON ──────────────────────
+
   textButton: {
     marginTop: 20,
+
     paddingVertical: 6,
+
     alignSelf: 'center',
   },
 
@@ -719,15 +780,20 @@ const styles = StyleSheet.create({
   },
 
   textButtonText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '800',
+
     textDecorationLine: 'underline',
   },
+
+  // ── ACCOUNT SEPARATOR ────────────────
 
   accountSeparator: {
     marginTop: 24,
     marginBottom: 4,
+
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -735,29 +801,39 @@ const styles = StyleSheet.create({
   smallLine: {
     flex: 1,
     height: 2,
-    backgroundColor: COLORS.black,
+
+    backgroundColor: COLORS.contours,
   },
 
   accountSeparatorText: {
     marginHorizontal: 10,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1,
   },
 
+  // ── OTP INFORMATION ──────────────────
+
   codeInformation: {
     marginBottom: 22,
+
     padding: 15,
+
     alignItems: 'center',
-    backgroundColor: COLORS.lightGrey,
+
+    backgroundColor: COLORS.background,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
   },
 
   codeInformationTitle: {
-    color: COLORS.black,
+    color: COLORS.text2,
+
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1.4,
@@ -765,20 +841,28 @@ const styles = StyleSheet.create({
 
   codeInformationText: {
     marginTop: 7,
-    color: COLORS.black,
+
+    color: COLORS.text2,
+
     fontSize: 13,
   },
 
   emailPreview: {
     maxWidth: '100%',
+
     marginTop: 3,
-    color: COLORS.black,
+
+    color: COLORS.text1,
+
     fontSize: 14,
     fontWeight: '900',
   },
 
+  // ── SOCIAL ───────────────────────────
+
   orContainer: {
     marginVertical: 30,
+
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -786,23 +870,29 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 3,
-    backgroundColor: COLORS.black,
+
+    backgroundColor: COLORS.contours,
   },
 
   orBadge: {
     width: 44,
     height: 34,
+
     marginHorizontal: 12,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: COLORS.primary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 10,
   },
 
   orText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 1,
@@ -814,87 +904,115 @@ const styles = StyleSheet.create({
 
   socialButton: {
     minHeight: 56,
+
     paddingHorizontal: 14,
+
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 3,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 13,
-    shadowColor: COLORS.black,
+
+    shadowColor: COLORS.contours,
     shadowOffset: {
       width: 4,
       height: 4,
     },
     shadowOpacity: 1,
     shadowRadius: 0,
+
     elevation: 4,
   },
 
   socialIcon: {
     width: 31,
     height: 31,
+
     marginRight: 13,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderWidth: 2,
-    borderColor: COLORS.black,
+    borderColor: COLORS.contours,
     borderRadius: 16,
   },
 
   socialIconText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 16,
     fontWeight: '900',
   },
 
   socialButtonText: {
     flex: 1,
-    color: COLORS.black,
+
+    color: COLORS.text1,
+
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.8,
+
     textAlign: 'center',
   },
 
   appleButton: {
-    backgroundColor: COLORS.black,
+    backgroundColor: COLORS.contours,
     shadowColor: COLORS.primary,
   },
 
   appleIcon: {
     width: 31,
     height: 31,
+
     marginRight: 13,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.white,
+
+    backgroundColor: COLORS.secondary,
+
     borderRadius: 16,
   },
 
   appleIconText: {
-    color: COLORS.black,
+    color: COLORS.text1,
+
     fontSize: 17,
     fontWeight: '900',
   },
 
   appleButtonText: {
     flex: 1,
-    color: COLORS.white,
+
+    color: COLORS.text1,
+
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.8,
+
     textAlign: 'center',
   },
 
+  // ── LEGAL ────────────────────────────
+
   legalText: {
     marginTop: 28,
+
     paddingHorizontal: 12,
-    color: COLORS.grey,
+
+    color: COLORS.text2,
+
     fontSize: 11,
     fontWeight: '500',
     lineHeight: 16,
+
     textAlign: 'center',
   },
 })
