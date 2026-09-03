@@ -4,11 +4,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   ScrollView,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
 } from 'react-native'
@@ -401,12 +399,27 @@ export default function EditAccountScreen({
   if (loading) {
     return (
       <SafeAreaView
-        style={
-          styles.loadingRoot
-        }
+        style={styles.root}
         edges={['top']}
       >
-        <LoadingState />
+        <LoadingState fullScreen />
+      </SafeAreaView>
+    )
+  }
+
+  /*
+    ----------------------------------
+    SAVING
+    ----------------------------------
+  */
+
+  if (saving) {
+    return (
+      <SafeAreaView
+        style={styles.root}
+        edges={['top']}
+      >
+        <LoadingState fullScreen />
       </SafeAreaView>
     )
   }
@@ -703,47 +716,29 @@ export default function EditAccountScreen({
           {/* SAVE */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[
-              styles.saveBtn,
-
-              saving &&
-                styles.saveBtnDisabled,
-            ]}
-            onPress={save}
-            disabled={
-              saving
+            style={
+              styles.saveBtn
             }
+            onPress={save}
           >
-            {saving ? (
-              <ActivityIndicator
-                color={
-                  COLORS.icon
-                }
-              />
-            ) : (
-              <Text
-                style={
-                  styles.saveBtnText
-                }
-              >
-                ENREGISTRER
-              </Text>
-            )}
+            <Text
+              style={
+                styles.saveBtnText
+              }
+            >
+              ENREGISTRER
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
   )
 }
+
 const styles = StyleSheet.create({
   // ── LAYOUT ───────────────────────────
 
   root: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-  },
-
-  loadingRoot: {
     flex: 1,
     backgroundColor: COLORS.primary,
   },
@@ -957,10 +952,6 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
 
     elevation: 5,
-  },
-
-  saveBtnDisabled: {
-    opacity: 0.6,
   },
 
   saveBtnText: {

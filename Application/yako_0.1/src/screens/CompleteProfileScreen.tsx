@@ -9,11 +9,11 @@ import {
   ScrollView,
   Platform,
   StatusBar,
-  ActivityIndicator,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { COLORS } from '../theme/colors'
+import LoadingState from '../components/LoadingState'
 
 export default function CompleteProfileScreen({
   onComplete,
@@ -90,6 +90,17 @@ export default function CompleteProfileScreen({
     await supabase.auth.refreshSession()
     onComplete()
     setLoading(false)
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={['top']}
+      >
+        <LoadingState fullScreen />
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -257,30 +268,20 @@ export default function CompleteProfileScreen({
             </View>
 
             <Pressable
-              disabled={loading}
               onPress={handleSave}
               style={({ pressed }) => [
                 styles.primaryButton,
-                pressed && !loading && styles.buttonPressed,
-                loading && styles.buttonDisabled,
+                pressed &&
+                  styles.buttonPressed,
               ]}
             >
-              {loading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator
-                    size="small"
-                    color={COLORS.text1}
-                  />
-
-                  <Text style={styles.primaryButtonText}>
-                    ENREGISTREMENT...
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  TERMINER MON PROFIL
-                </Text>
-              )}
+              <Text
+                style={
+                  styles.primaryButtonText
+                }
+              >
+                TERMINER MON PROFIL
+              </Text>
             </Pressable>
           </View>
 
@@ -567,17 +568,6 @@ const styles = StyleSheet.create({
 
     elevation: 1,
     opacity: 0.9,
-  },
-
-  buttonDisabled: {
-    opacity: 0.65,
-  },
-
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    gap: 10,
   },
 
   // ── INFORMATION ──────────────────────

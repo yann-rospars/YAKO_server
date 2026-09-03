@@ -303,6 +303,109 @@ CREATE TABLE IF NOT EXISTS user_auth_providers (
 );
 
 ---------------------------------------
+-- Fonction session 
+---------------------------------------
+
+CREATE OR REPLACE FUNCTION get_session_days()
+RETURNS TABLE(day DATE)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT DISTINCT starts_at::date AS day
+  FROM sessions
+  WHERE starts_at::date >= CURRENT_DATE
+  ORDER BY day;
+$$;
+
+CREATE FUNCTION get_calendar_movies(
+  p_day DATE,
+  p_arrondissements INTEGER[] DEFAULT NULL
+)
+RETURNS TABLE (
+  movie_id INTEGER,
+  title TEXT,
+  poster_path TEXT,
+  release_date DATE,
+  popularity REAL,
+  category TEXT,
+  original_times TEXT[],
+  dubbed_times TEXT[],
+  local_times TEXT[]
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    m.id AS movie_id,
+    m.title,
+    m.poster_path,
+    m.release_date,
+    m.popularity,
+
+    CASE
+      WHEN m.release_date IS NOT NULL
+        AND m.release_date <= p_day - INTERVAL '2 years'
+      THEN 'reissue'
+      ELSE 'current'
+    END AS category,
+
+    ARRAY_AGG(
+      DISTINCT TO_CHAR(s.starts_at, 'HH24:MI')
+      ORDER BY TO_CHAR(s.starts_at, 'HH24:MI')
+    ) FILTER (
+      WHERE UPPER(s.version) = 'ORIGINAL'
+    ) AS original_times,
+
+    ARRAY_AGG(
+      DISTINCT TO_CHAR(s.starts_at, 'HH24:MI')
+      ORDER BY TO_CHAR(s.starts_at, 'HH24:MI')
+    ) FILTER (
+      WHERE UPPER(s.version) = 'DUBBED'
+    ) AS dubbed_times,
+
+    ARRAY_AGG(
+      DISTINCT TO_CHAR(s.starts_at, 'HH24:MI')
+      ORDER BY TO_CHAR(s.starts_at, 'HH24:MI')
+    ) FILTER (
+      WHERE UPPER(s.version) = 'LOCAL'
+    ) AS local_times
+
+  FROM sessions s
+
+  JOIN movies m
+    ON m.id = s.movie_id
+
+  JOIN cinemas c
+    ON c.id = s.cinema_id
+
+  WHERE
+    s.starts_at >= p_day::timestamp
+    AND s.starts_at < (p_day + INTERVAL '1 day')::timestamp
+
+    AND (
+      p_arrondissements IS NULL
+
+      OR (
+        c.postal_code ~ '^750(0[1-9]|1[0-9]|20)$'
+
+        AND RIGHT(c.postal_code, 2)::integer =
+          ANY(p_arrondissements)
+      )
+    )
+
+  GROUP BY
+    m.id,
+    m.title,
+    m.poster_path,
+    m.release_date,
+    m.popularity
+
+  ORDER BY
+    category DESC,
+    m.popularity DESC;
+$$;
+
+---------------------------------------
 -- Fonction User 
 ---------------------------------------
 
@@ -454,6 +557,8 @@ CREATE INDEX IF NOT EXISTS idx_notification_events_user_status ON notification_e
 CREATE INDEX IF NOT EXISTS idx_user_devices_user_id ON user_devices(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_auth_providers_user_id ON user_auth_providers(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_starts_at ON sessions(starts_at);
 
 
 

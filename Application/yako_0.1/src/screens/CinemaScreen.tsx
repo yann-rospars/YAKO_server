@@ -450,15 +450,13 @@ export default function CinemaScreen({
   if (loading) {
     return (
       <SafeAreaView
-        style={
-          styles.loadingScreen
-        }
+        style={styles.root}
         edges={[
           'top',
           'bottom',
         ]}
       >
-        <LoadingState />
+        <LoadingState fullScreen />
       </SafeAreaView>
     )
   }
@@ -940,11 +938,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.primary,
-  },
-
-  loadingScreen: {
-    flex: 1,
-    backgroundColor: COLORS.background,
   },
 
   screen: {

@@ -7,7 +7,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   FlatList,
   Modal,
@@ -441,33 +440,12 @@ export default function ListsScreen({
 
   if (loading) {
     return (
-      <View
-        style={
-          styles.loadingRoot
-        }
+      <SafeAreaView
+        style={styles.root}
+        edges={['top', 'bottom']}
       >
-        <SafeAreaView
-          edges={['top']}
-          style={
-            styles.loadingSafeArea
-          }
-        />
-
-        <View
-          style={
-            styles.loadingContainer
-          }
-        >
-          <LoadingState />
-        </View>
-
-        <SafeAreaView
-          edges={['bottom']}
-          style={
-            styles.loadingSafeArea
-          }
-        />
-      </View>
+        <LoadingState fullScreen />
+      </SafeAreaView>
     )
   }
 
@@ -795,12 +773,7 @@ export default function ListsScreen({
                 }
               >
                 {creating ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={
-                      COLORS.icon
-                    }
-                  />
+                  <LoadingState inline />
                 ) : (
                   <Text
                     style={
@@ -908,12 +881,7 @@ export default function ListsScreen({
                 }
               >
                 {deleting ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={
-                      COLORS.icon
-                    }
-                  />
+                  <LoadingState inline />
                 ) : (
                   <Text
                     style={
@@ -942,20 +910,6 @@ const styles = StyleSheet.create({
 
   topSafeArea: {
     backgroundColor: COLORS.primary,
-  },
-
-  loadingRoot: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-  },
-
-  loadingSafeArea: {
-    backgroundColor: COLORS.primary,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
   },
 
   screen: {

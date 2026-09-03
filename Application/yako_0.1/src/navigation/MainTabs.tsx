@@ -3,7 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import HomeScreen from '../screens/HomeScreen'
 import AccountScreen from '../screens/AccountScreen'
 import ListsScreen from '../screens/ListsScreen'
-import SessionsScreen from '../screens/SessionsScreen'
+// import SessionsScreen from '../screens/SessionsScreen'
+import CalendarScreen from '../screens/CalendarScreen'
 
 import HomeFooter from '../components/HomeFooter'
 
@@ -40,7 +41,7 @@ export default function MainTabs() {
 
       <Tab.Screen
         name="Calendar"
-        component={SessionsScreen}
+        component={CalendarScreen}
       />
 
       <Tab.Screen

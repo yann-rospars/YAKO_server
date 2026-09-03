@@ -128,7 +128,7 @@ export default function AccountScreen({
         style={styles.loadingRoot}
         edges={['top']}
       >
-        <LoadingState />
+        <LoadingState fullScreen />
       </SafeAreaView>
     )
   }

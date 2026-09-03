@@ -1,62 +1,56 @@
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
 
-export default function LoadingState() {
-  return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <ActivityIndicator
-          size="large"
-          color="#111111"
-        />
+import { COLORS } from '../theme/colors'
 
-        <Text style={styles.text}>
-          CHARGEMENT...
-        </Text>
-      </View>
+type LoadingStateProps = {
+  fullScreen?: boolean
+  inline?: boolean
+}
+
+export default function LoadingState({
+  fullScreen = false,
+  inline = false,
+}: LoadingStateProps) {
+  if (inline) {
+    return (
+      <ActivityIndicator
+        size="small"
+        color={COLORS.icon}
+      />
+    )
+  }
+
+  return (
+    <View
+      style={[
+        styles.container,
+        fullScreen &&
+          styles.fullScreen,
+      ]}
+    >
+      <ActivityIndicator
+        size="large"
+        color={COLORS.icon}
+      />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    paddingHorizontal: 20,
+    minHeight: 180,
+
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
 
-  card: {
-    minWidth: 180,
-    paddingHorizontal: 25,
-    paddingVertical: 24,
-    alignItems: 'center',
-    backgroundColor: '#FFE17A',
-    borderWidth: 3,
-    borderColor: '#111111',
-    borderRadius: 17,
+  fullScreen: {
+    flex: 1,
 
-    shadowColor: '#111111',
-    shadowOffset: {
-      width: 5,
-      height: 5,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 6,
-  },
-
-  text: {
-    marginTop: 14,
-    color: '#111111',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 1.3,
+    backgroundColor: COLORS.background,
   },
 })

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Image,
-  ActivityIndicator,
   ScrollView,
   TouchableOpacity,
   Linking,
@@ -542,7 +541,7 @@ export default function MovieScreen({
         style={styles.root}
         edges={['top']}
       >
-        <LoadingState />
+        <LoadingState fullScreen />
       </SafeAreaView>
     )
   }
@@ -869,24 +868,7 @@ export default function MovieScreen({
             )}
 
             {sessionsLoading ? (
-              <View
-                style={
-                  styles.sessionsLoading
-                }
-              >
-                <ActivityIndicator
-                  size="large"
-                  color={COLORS.icon}
-                />
-
-                <Text
-                  style={
-                    styles.sessionsLoadingText
-                  }
-                >
-                  CHARGEMENT DES SÉANCES...
-                </Text>
-              </View>
+              <LoadingState />
             ) : sessions.length === 0 ? (
               <View
                 style={
@@ -1029,24 +1011,7 @@ export default function MovieScreen({
             </View>
 
             {listsLoading ? (
-              <View
-                style={
-                  styles.listModalLoading
-                }
-              >
-                <ActivityIndicator
-                  size="large"
-                  color={COLORS.icon}
-                />
-
-                <Text
-                  style={
-                    styles.listModalLoadingText
-                  }
-                >
-                  CHARGEMENT DES LISTES...
-                </Text>
-              </View>
+              <LoadingState />
             ) : filteredMovieLists.length ===
               0 ? (
               <Pressable
@@ -1114,10 +1079,7 @@ export default function MovieScreen({
                         ]}
                       >
                         {isAdding ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={COLORS.icon}
-                          />
+                          <LoadingState inline />
                         ) : (
                           <Text
                             style={[
@@ -1538,31 +1500,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 
-  sessionsLoading: {
-    minHeight: 130,
-
-    padding: 20,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 14,
-  },
-
-  sessionsLoadingText: {
-    marginTop: 12,
-
-    color: COLORS.text2,
-
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-
   noSessionsCard: {
     minHeight: 90,
 
@@ -1896,23 +1833,6 @@ const styles = StyleSheet.create({
   },
 
   // ── MODAL STATES ─────────────────────
-
-  listModalLoading: {
-    minHeight: 170,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  listModalLoadingText: {
-    marginTop: 12,
-
-    color: COLORS.text2,
-
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.7,
-  },
 
   listModalEmpty: {
     minHeight: 90,

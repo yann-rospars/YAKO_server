@@ -1043,13 +1043,7 @@ export default function HomeScreen({
         {renderHeader()}
 
         {loading ? (
-          <View
-            style={
-              styles.loadingContainer
-            }
-          >
-            <LoadingState />
-          </View>
+          <LoadingState fullScreen />
         ) : searchMode ===
           'movies' ? (
           /*
@@ -1106,14 +1100,8 @@ export default function HomeScreen({
                       loadMoreMovies
                     }
                   >
-                    {loadingMoreMovies ? (
-                      <Text
-                        style={
-                          styles.loadMoreButtonText
-                        }
-                      >
-                        CHARGEMENT...
-                      </Text>
+                    {loading ? (
+                      <LoadingState fullScreen />
                     ) : (
                       <>
                         <Text
@@ -1425,12 +1413,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-
+  
   listContent: {
     paddingBottom: 24,
     backgroundColor: COLORS.background,
