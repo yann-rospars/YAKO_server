@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
 
   logoText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 30,
     fontWeight: '900',
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 25,
     fontWeight: '900',
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 3,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 12,
     fontWeight: '900',
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
     backgroundColor: COLORS.secondary,
 
     borderWidth: 3,
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 14,
     fontWeight: '900',
@@ -737,7 +737,7 @@ const styles = StyleSheet.create({
   },
 
   secondaryButtonText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 14,
     fontWeight: '900',
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
   },
 
   textButtonText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 14,
     fontWeight: '800',
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
 
     marginTop: 3,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 14,
     fontWeight: '900',
@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
   },
 
   orText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 12,
     fontWeight: '900',
@@ -944,7 +944,7 @@ const styles = StyleSheet.create({
   },
 
   socialIconText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 16,
     fontWeight: '900',
@@ -953,7 +953,7 @@ const styles = StyleSheet.create({
   socialButtonText: {
     flex: 1,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 13,
     fontWeight: '900',
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
   },
 
   appleIconText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 17,
     fontWeight: '900',
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
   appleButtonText: {
     flex: 1,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 13,
     fontWeight: '900',

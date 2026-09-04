@@ -34,6 +34,7 @@ import {
   CinemaSessionRow,
   getCinemaDetail,
 } from '../services/cinemaService'
+
 import { COLORS } from '../theme/colors'
 
 type Props = {
@@ -395,20 +396,20 @@ export default function CinemaScreen({
 
   const getPosterUrl = (
     posterPath: string | null
-    ) => {
+  ) => {
     if (!posterPath) {
-        return null
+      return null
     }
 
     if (
-        posterPath.startsWith('http://') ||
-        posterPath.startsWith('https://')
+      posterPath.startsWith('http://') ||
+      posterPath.startsWith('https://')
     ) {
-        return posterPath
+      return posterPath
     }
 
     if (posterPath.startsWith('/img')) {
-        return `https://fr.web.img6.acsta.net${posterPath}`
+      return `https://fr.web.img6.acsta.net${posterPath}`
     }
 
     return `https://image.tmdb.org/t/p/w500${posterPath}`
@@ -451,10 +452,7 @@ export default function CinemaScreen({
     return (
       <SafeAreaView
         style={styles.root}
-        edges={[
-          'top',
-          'bottom',
-        ]}
+        edges={['top']}
       >
         <LoadingState fullScreen />
       </SafeAreaView>
@@ -471,10 +469,7 @@ export default function CinemaScreen({
     return (
       <SafeAreaView
         style={styles.root}
-        edges={[
-          'top',
-          'bottom',
-        ]}
+        edges={['top']}
       >
         <View
           style={
@@ -510,13 +505,16 @@ export default function CinemaScreen({
     )
   }
 
+  /*
+    ----------------------------------
+    RETURN
+    ----------------------------------
+  */
+
   return (
     <SafeAreaView
       style={styles.root}
-      edges={[
-        'top',
-        'bottom',
-      ]}
+      edges={['top']}
     >
       {/* HEADER */}
       <View style={styles.header}>
@@ -745,7 +743,10 @@ export default function CinemaScreen({
                 }
               }
 
-              const posterUrl = getPosterUrl(movie.poster_path)
+              const posterUrl =
+                getPosterUrl(
+                  movie.poster_path
+                )
 
               return (
                 <View
@@ -756,95 +757,123 @@ export default function CinemaScreen({
                 >
                   {/* FILM */}
                   <Pressable
-                    style={({ pressed }) => [
-                        styles.movieHeader,
-                        pressed &&
+                    style={({
+                      pressed,
+                    }) => [
+                      styles.movieHeader,
+
+                      pressed &&
                         styles.movieHeaderPressed,
                     ]}
                     onPress={() =>
-                        navigation.navigate('Movie', {
-                        movieId: movie.id,
-                        })
+                      navigation.navigate(
+                        'Movie',
+                        {
+                          movieId:
+                            movie.id,
+                        }
+                      )
                     }
-                    >
+                  >
                     {posterUrl ? (
                       <Image
                         source={{
                           uri: posterUrl,
                         }}
-                        style={styles.moviePoster}
+                        style={
+                          styles.moviePoster
+                        }
                         resizeMode="cover"
                       />
                     ) : (
-                        <View
+                      <View
                         style={
-                            styles.moviePosterPlaceholder
+                          styles.moviePosterPlaceholder
                         }
-                        >
+                      >
                         <MaterialIcons
-                            name="movie"
-                            size={24}
-                            color={COLORS.icon}
+                          name="movie"
+                          size={24}
+                          color={
+                            COLORS.icon
+                          }
                         />
-                        </View>
+                      </View>
                     )}
 
-                    <View style={styles.movieInfo}>
-                        <Text
-                        style={styles.movieTitle}
+                    <View
+                      style={
+                        styles.movieInfo
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.movieTitle
+                        }
                         numberOfLines={2}
-                        >
+                      >
                         {movie.title}
-                        </Text>
+                      </Text>
 
-                        {movie.movie_people
+                      {movie.movie_people
                         .filter(
-                            (item) =>
+                          (item) =>
                             item.role_type ===
                             'director'
                         )
                         .map(
-                            (item) =>
-                            item.person?.name
+                          (item) =>
+                            item.person
+                              ?.name
                         )
                         .filter(Boolean)
-                        .length > 0 && (
+                        .length >
+                        0 && (
                         <Text
-                            style={
+                          style={
                             styles.movieDirector
-                            }
-                            numberOfLines={1}
+                          }
+                          numberOfLines={
+                            1
+                          }
                         >
-                            {movie.movie_people
+                          {movie.movie_people
                             .filter(
-                                (item) =>
+                              (item) =>
                                 item.role_type ===
                                 'director'
                             )
                             .map(
-                                (item) =>
-                                item.person?.name
+                              (item) =>
+                                item.person
+                                  ?.name
                             )
-                            .filter(Boolean)
+                            .filter(
+                              Boolean
+                            )
                             .join(', ')}
                         </Text>
-                        )}
+                      )}
 
-                        {movie.release_date && (
+                      {movie.release_date && (
                         <Text
-                            style={styles.movieDate}
+                          style={
+                            styles.movieDate
+                          }
                         >
-                            {new Date(
+                          {new Date(
                             `${movie.release_date}T12:00:00`
-                            ).getFullYear()}
+                          ).getFullYear()}
                         </Text>
-                        )}
+                      )}
                     </View>
 
                     <MaterialIcons
-                        name="chevron-right"
-                        size={22}
-                        color={COLORS.icon}
+                      name="chevron-right"
+                      size={22}
+                      color={
+                        COLORS.icon
+                      }
                     />
                   </Pressable>
 
@@ -999,7 +1028,7 @@ const styles = StyleSheet.create({
   },
 
   cinemaName: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 15,
     fontWeight: '900',
@@ -1068,7 +1097,7 @@ const styles = StyleSheet.create({
   dayNumber: {
     marginVertical: 2,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 19,
     fontWeight: '900',
@@ -1083,7 +1112,7 @@ const styles = StyleSheet.create({
   },
 
   dayTextSelected: {
-    color: COLORS.text1,
+    color: COLORS.text2,
   },
 
   calendarGap: {
@@ -1180,7 +1209,7 @@ const styles = StyleSheet.create({
 
     marginRight: 8,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 12,
     fontWeight: '900',
@@ -1267,7 +1296,7 @@ const styles = StyleSheet.create({
   },
 
   timeText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 10,
     fontWeight: '900',
@@ -1307,7 +1336,7 @@ const styles = StyleSheet.create({
   },
 
   notFoundText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 13,
     fontWeight: '900',
@@ -1341,7 +1370,7 @@ const styles = StyleSheet.create({
   },
 
   backSimpleText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 10,
     fontWeight: '900',
