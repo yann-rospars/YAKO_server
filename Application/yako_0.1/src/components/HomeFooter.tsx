@@ -1,7 +1,6 @@
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -23,76 +22,85 @@ export default function HomeFooter({
   const insets = useSafeAreaInsets()
 
   return (
-    <View
-      style={[
-        styles.footer,
-        {
-          paddingBottom: Math.max(
-            insets.bottom + 4,
-            10
-          ),
-        },
-      ]}
-    >
-      <FooterButton
-        label="HOME"
-        icon={
-          <MaterialIcons
-            name="home"
-            size={22}
-            color="#111111"
-          />
-        }
-        onPress={onHomePress}
-      />
+    <View>
+      {/* FOOTER */}
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingBottom:
+              insets.bottom > 0
+                ? 0
+                : 10,
+          },
+        ]}
+      >
+        <FooterButton
+          icon={
+            <MaterialIcons
+              name="home"
+              size={22}
+              color="#111111"
+            />
+          }
+          onPress={onHomePress}
+        />
 
-      <FooterButton
-        label="CALENDRIER"
-        icon={
-          <MaterialIcons
-            name="calendar-month"
-            size={22}
-            color="#111111"
-          />
-        }
-        onPress={onCalendarPress}
-      />
+        <FooterButton
+          icon={
+            <MaterialIcons
+              name="calendar-month"
+              size={22}
+              color="#111111"
+            />
+          }
+          onPress={onCalendarPress}
+        />
 
-      <FooterButton
-        label="COMPTE"
-        icon={
-          <MaterialIcons
-            name="person"
-            size={22}
-            color="#111111"
-          />
-        }
-        onPress={onAccountPress}
-      />
+        <FooterButton
+          icon={
+            <MaterialIcons
+              name="person"
+              size={22}
+              color="#111111"
+            />
+          }
+          onPress={onAccountPress}
+        />
 
-      <FooterButton
-        label="LISTES"
-        icon={
-          <MaterialIcons
-            name="bookmark"
-            size={22}
-            color="#111111"
-          />
-        }
-        onPress={onListsPress}
-      />
+        <FooterButton
+          icon={
+            <MaterialIcons
+              name="bookmark"
+              size={22}
+              color="#111111"
+            />
+          }
+          onPress={onListsPress}
+        />
+      </View>
+
+      {/* SAFE AREA BASSE DYNAMIQUE */}
+      {insets.bottom > 0 && (
+        <View
+          style={[
+            styles.bottomSafeArea,
+            {
+              height: insets.bottom,
+            },
+          ]}
+        />
+      )}
     </View>
   )
 }
 
 type FooterButtonProps = {
-  label: string
   icon: React.ReactNode
   onPress: () => void
 }
 
 function FooterButton({
-  label,
   icon,
   onPress,
 }: FooterButtonProps) {
@@ -100,21 +108,18 @@ function FooterButton({
     <Pressable
       style={({ pressed }) => [
         styles.footerButton,
-        pressed && styles.footerButtonPressed,
+        pressed &&
+          styles.footerButtonPressed,
       ]}
       onPress={onPress}
     >
-      <View style={styles.footerIconContainer}>
+      <View
+        style={
+          styles.footerIconContainer
+        }
+      >
         {icon}
       </View>
-
-      <Text
-        style={styles.footerLabel}
-        numberOfLines={1}
-        allowFontScaling={false}
-      >
-        {label}
-      </Text>
     </Pressable>
   )
 }
@@ -123,21 +128,30 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 8,
     paddingTop: 8,
+
     flexDirection: 'row',
     alignItems: 'flex-start',
+
     backgroundColor: '#FFE17A',
+
     borderTopWidth: 3,
     borderTopColor: '#111111',
   },
 
+  bottomSafeArea: {
+    backgroundColor: '#FFE17A',
+  },
+
   footerButton: {
     flex: 1,
+
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   footerButtonPressed: {
     opacity: 0.55,
+
     transform: [
       {
         translateY: 2,
@@ -148,21 +162,14 @@ const styles = StyleSheet.create({
   footerIconContainer: {
     width: 31,
     height: 29,
-    marginBottom: 5,
+
     alignItems: 'center',
     justifyContent: 'center',
+
     backgroundColor: '#FFFFFF',
+
     borderWidth: 2,
     borderColor: '#111111',
     borderRadius: 8,
-  },
-
-  footerLabel: {
-    maxWidth: '100%',
-    color: '#111111',
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.25,
-    textAlign: 'center',
   },
 })

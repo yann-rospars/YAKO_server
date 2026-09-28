@@ -7,11 +7,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -21,15 +19,14 @@
       },
       "predictiveBackGestureEnabled": false
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "plugins": [
       "expo-web-browser",
       "expo-status-bar",
       "expo-font",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
@@ -38,6 +35,11 @@
           "backgroundColor": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b72fe99d-c2d5-4d8f-918d-a577d326d595"
+      }
+    }
   }
 }

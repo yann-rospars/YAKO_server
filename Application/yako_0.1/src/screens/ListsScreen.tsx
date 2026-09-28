@@ -442,7 +442,7 @@ export default function ListsScreen({
     return (
       <SafeAreaView
         style={styles.root}
-        edges={['top', 'bottom']}
+        edges={['top']}
       >
         <LoadingState fullScreen />
       </SafeAreaView>

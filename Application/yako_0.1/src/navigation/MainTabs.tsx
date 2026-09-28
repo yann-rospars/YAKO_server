@@ -178,22 +178,37 @@ export default function MainTabs() {
         <HomeFooter
           onHomePress={() =>
             props.navigation.navigate(
-              'Home'
+              'Home',
+              {
+                screen: 'HomeScreen',
+              }
             )
           }
+
           onCalendarPress={() =>
             props.navigation.navigate(
-              'Calendar'
+              'Calendar',
+              {
+                screen: 'CalendarScreen',
+              }
             )
           }
+
           onAccountPress={() =>
             props.navigation.navigate(
-              'Account'
+              'Account',
+              {
+                screen: 'AccountScreen',
+              }
             )
           }
+
           onListsPress={() =>
             props.navigation.navigate(
-              'Lists'
+              'Lists',
+              {
+                screen: 'ListsScreen',
+              }
             )
           }
         />
