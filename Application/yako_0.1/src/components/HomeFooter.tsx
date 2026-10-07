@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type HomeFooterProps = {
+  activeTab: string | null
   onHomePress: () => void
   onCalendarPress: () => void
   onAccountPress: () => void
@@ -14,6 +15,7 @@ type HomeFooterProps = {
 }
 
 export default function HomeFooter({
+  activeTab,
   onHomePress,
   onCalendarPress,
   onAccountPress,
@@ -36,44 +38,52 @@ export default function HomeFooter({
         ]}
       >
         <FooterButton
+          active={activeTab === 'Home'}
+          label="Accueil"
           icon={
             <MaterialIcons
               name="home"
               size={22}
-              color="#111111"
+              color={activeTab === 'Home' ? '#FFFFFF' : '#111111'}
             />
           }
           onPress={onHomePress}
         />
 
         <FooterButton
+          active={activeTab === 'Calendar'}
+          label="Calendrier"
           icon={
             <MaterialIcons
               name="calendar-month"
               size={22}
-              color="#111111"
+              color={activeTab === 'Calendar' ? '#FFFFFF' : '#111111'}
             />
           }
           onPress={onCalendarPress}
         />
 
         <FooterButton
+          active={activeTab === 'Account'}
+          label="Compte"
           icon={
             <MaterialIcons
               name="person"
               size={22}
-              color="#111111"
+              color={activeTab === 'Account' ? '#FFFFFF' : '#111111'}
             />
           }
           onPress={onAccountPress}
         />
 
         <FooterButton
+          active={activeTab === 'Lists'}
+          label="Listes"
           icon={
             <MaterialIcons
               name="bookmark"
               size={22}
-              color="#111111"
+              color={activeTab === 'Lists' ? '#FFFFFF' : '#111111'}
             />
           }
           onPress={onListsPress}
@@ -96,27 +106,31 @@ export default function HomeFooter({
 }
 
 type FooterButtonProps = {
+  active: boolean
+  label: string
   icon: React.ReactNode
   onPress: () => void
 }
 
 function FooterButton({
+  active,
+  label,
   icon,
   onPress,
 }: FooterButtonProps) {
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.footerButton,
-        pressed &&
-          styles.footerButtonPressed,
-      ]}
+      style={styles.footerButton}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
     >
       <View
-        style={
-          styles.footerIconContainer
-        }
+        style={[
+          styles.footerIconContainer,
+          active && styles.footerIconContainerActive,
+        ]}
       >
         {icon}
       </View>
@@ -149,14 +163,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  footerButtonPressed: {
-    opacity: 0.55,
-
-    transform: [
-      {
-        translateY: 2,
-      },
-    ],
+  footerIconContainerActive: {
+    backgroundColor: '#111111',
   },
 
   footerIconContainer: {

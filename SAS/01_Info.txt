@@ -1,0 +1,9 @@
+Société : YAKO
+Forme : SAS
+Associés : 2
+Répartition : 50/50
+Capital : 2 €
+Président : Yann Rospars
+Siège : l'adresse que tu as choisie
+Durée : 99 ans
+Activité : développement/exploitation d'applications et services numériques autour notamment du cinéma.

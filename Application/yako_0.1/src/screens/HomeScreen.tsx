@@ -1,7 +1,7 @@
+import SearchClearButton from '../components/SearchClearButton'
 import { useEffect, useState } from 'react'
 import {
   FlatList,
-  Modal,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -19,7 +19,6 @@ import {
   MaterialIcons,
 } from '@expo/vector-icons'
 
-import { supabase } from '../lib/supabase'
 
 import MovieCard from '../components/MovieCard'
 import CinemaCard from '../components/CinemaCard'
@@ -48,11 +47,6 @@ const MOVIES_PER_PAGE = 18
 type SearchMode =
   | 'movies'
   | 'cinemas'
-
-type Genre = {
-  id: number
-  genre: string
-}
 
 type CinemaListItem =
   | {
@@ -104,33 +98,13 @@ export default function HomeScreen({
     setHasMoreMovies,
   ] = useState(true)
 
-  const [minYear, setMinYear] =
-    useState('1895')
-
-  const [maxYear, setMaxYear] =
-    useState(
-      String(
-        new Date().getFullYear() + 1
-      )
-    )
-
-  const [genres, setGenres] =
-    useState<Genre[]>([])
-
-  const [
-    selectedGenreIds,
-    setSelectedGenreIds,
-  ] = useState<number[]>([])
+  const [includeNewReleases, setIncludeNewReleases] = useState(false)
+  const [includeOlderReleases, setIncludeOlderReleases] = useState(true)
 
   const [
     futureSessionsOnly,
     setFutureSessionsOnly,
   ] = useState(true)
-
-  const [
-    genreModalVisible,
-    setGenreModalVisible,
-  ] = useState(false)
 
   const debouncedSearch =
     useDebouncedValue(
@@ -138,81 +112,7 @@ export default function HomeScreen({
       300
     )
 
-  const debouncedMinYear =
-    useDebouncedValue(
-      minYear,
-      300
-    )
-
-  const debouncedMaxYear =
-    useDebouncedValue(
-      maxYear,
-      300
-    )
-
-  /*
-    ----------------------------------
-    RESPONSIVE HEADER
-    ----------------------------------
-  */
-
-  const HEADER_PADDING = 16
-
-  const YEAR_WIDTH = 63
-
-  const GENRE_MIN_WIDTH = 88
-
-  const SESSION_MIN_WIDTH = 98
-
-  const availableWidth =
-    width - HEADER_PADDING * 2
-
-  const filterGap = Math.max(
-    3,
-    Math.min(
-      7,
-      7 - (393 - width) * 0.08
-    )
-  )
-
-  const searchGap = Math.max(
-    4,
-    Math.min(
-      8,
-      8 - (393 - width) * 0.08
-    )
-  )
-
-  const flexibleFilterWidth =
-    availableWidth -
-    YEAR_WIDTH * 2 -
-    filterGap * 3
-
-  const inlineGenreWidth =
-    Math.max(
-      GENRE_MIN_WIDTH,
-      flexibleFilterWidth * 0.45
-    )
-
-  const inlineSessionWidth =
-    flexibleFilterWidth -
-    inlineGenreWidth
-
-  const sessionMustWrap =
-    inlineSessionWidth <
-    SESSION_MIN_WIDTH
-
-  const genreWidth =
-    sessionMustWrap
-      ? availableWidth -
-        YEAR_WIDTH * 2 -
-        filterGap * 2
-      : inlineGenreWidth
-
-  const sessionWidth =
-    sessionMustWrap
-      ? availableWidth
-      : inlineSessionWidth
+  const filterGap = width < 360 ? 3 : 7
 
   /*
     ----------------------------------
@@ -231,15 +131,10 @@ export default function HomeScreen({
   }, [
     debouncedSearch,
     searchMode,
-    debouncedMinYear,
-    debouncedMaxYear,
-    selectedGenreIds,
+    includeNewReleases,
+    includeOlderReleases,
     futureSessionsOnly,
   ])
-
-  useEffect(() => {
-    fetchGenres()
-  }, [])
 
   /*
     ----------------------------------
@@ -257,14 +152,8 @@ export default function HomeScreen({
             search:
               debouncedSearch,
 
-            minYear:
-              debouncedMinYear,
-
-            maxYear:
-              debouncedMaxYear,
-
-            genreIds:
-              selectedGenreIds,
+            includeNewReleases,
+            includeOlderReleases,
 
             futureSessionsOnly,
 
@@ -315,14 +204,8 @@ export default function HomeScreen({
             search:
               debouncedSearch,
 
-            minYear:
-              debouncedMinYear,
-
-            maxYear:
-              debouncedMaxYear,
-
-            genreIds:
-              selectedGenreIds,
+            includeNewReleases,
+            includeOlderReleases,
 
             futureSessionsOnly,
 
@@ -358,45 +241,6 @@ export default function HomeScreen({
       } finally {
         setLoadingMoreMovies(false)
       }
-    }
-
-  /*
-    ----------------------------------
-    GENRES
-    ----------------------------------
-  */
-
-  const fetchGenres =
-    async () => {
-      const {
-        data,
-        error,
-      } = await supabase
-        .from('genres')
-        .select(
-          'id, genre'
-        )
-        .order(
-          'genre',
-          {
-            ascending: true,
-          }
-        )
-
-      if (error) {
-        console.error(
-          'Erreur récupération genres :',
-          error
-        )
-
-        setGenres([])
-
-        return
-      }
-
-      setGenres(
-        (data ?? []) as Genre[]
-      )
     }
 
   /*
@@ -707,53 +551,41 @@ export default function HomeScreen({
             ⌕
           </Text>
 
-          <TextInput
-            value={search}
-            onChangeText={
-              setSearch
-            }
-            placeholder={
-              searchMode ===
-              'movies'
-                ? 'Rechercher un film...'
-                : 'Rechercher un cinéma...'
-            }
-            placeholderTextColor={
-              COLORS.ghostText
-            }
-            autoCorrect={false}
-            returnKeyType="search"
-            allowFontScaling={
-              false
-            }
-            style={
-              styles.searchInput
-            }
-          />
+          <View style={styles.searchInputWrapper}>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              accessibilityLabel={
+                searchMode === 'movies'
+                  ? 'Rechercher un film'
+                  : 'Rechercher un cin?ma'
+              }
+              autoCorrect={false}
+              returnKeyType="search"
+              allowFontScaling={false}
+              style={[styles.searchInput, styles.searchTypography]}
+            />
+            {search.length === 0 && (
+              <View
+                pointerEvents="none"
+                style={styles.searchPlaceholderContainer}
+              >
+                <Text
+                  accessible={false}
+                  allowFontScaling={false}
+                  numberOfLines={1}
+                  style={[styles.searchTypography, styles.searchPlaceholder]}
+                >
+                  {searchMode === 'movies'
+                    ? 'Rechercher un film...'
+                    : 'Rechercher un cin?ma...'}
+                </Text>
+              </View>
+            )}
+          </View>
 
           {search.length > 0 && (
-            <Pressable
-              hitSlop={10}
-              style={({
-                pressed,
-              }) => [
-                styles.clearButton,
-
-                pressed &&
-                  styles.clearButtonPressed,
-              ]}
-              onPress={() =>
-                setSearch('')
-              }
-            >
-              <Text
-                style={
-                  styles.clearButtonText
-                }
-              >
-                ×
-              </Text>
-            </Pressable>
+            <SearchClearButton onPress={() => setSearch('')} />
           )}
         </View>
 
@@ -804,214 +636,35 @@ export default function HomeScreen({
             },
           ]}
         >
-          {/* YEAR MIN */}
-          <View
-            style={
-              styles.yearFilter
-            }
-          >
-            <Text
-              style={
-                styles.yearPrefix
-              }
+          {[
+            { label: 'AVEC SÉANCE', checked: futureSessionsOnly, toggle: () => setFutureSessionsOnly(value => !value) },
+            { label: 'DÉJÀ SORTI', checked: includeOlderReleases, toggle: () => setIncludeOlderReleases(value => !value) },
+            { label: 'NOUVEAUTÉ', checked: includeNewReleases, toggle: () => setIncludeNewReleases(value => !value) },
+          ].map(filter => (
+            <Pressable
+              key={filter.label}
+              accessibilityRole="checkbox"
+              accessibilityLabel={filter.label}
+              accessibilityState={{ checked: filter.checked }}
+              style={({ pressed }) => [
+                styles.sessionFilterButton,
+                filter.checked && styles.sessionFilterButtonActive,
+                pressed && styles.filterPressed,
+              ]}
+              onPress={filter.toggle}
             >
-              +
-            </Text>
-
-            <TextInput
-              value={
-                minYear
-              }
-              onChangeText={(
-                value
-              ) =>
-                setMinYear(
-                  value
-                    .replace(
-                      /\D/g,
-                      ''
-                    )
-                    .slice(
-                      0,
-                      4
-                    )
-                )
-              }
-              placeholder="____"
-              placeholderTextColor={
-                COLORS.ghostText
-              }
-              keyboardType="number-pad"
-              maxLength={4}
-              allowFontScaling={
-                false
-              }
-              style={
-                styles.yearInput
-              }
-            />
-          </View>
-
-          {/* YEAR MAX */}
-          <View
-            style={
-              styles.yearFilter
-            }
-          >
-            <Text
-              style={
-                styles.yearPrefix
-              }
-            >
-              −
-            </Text>
-
-            <TextInput
-              value={
-                maxYear
-              }
-              onChangeText={(
-                value
-              ) =>
-                setMaxYear(
-                  value
-                    .replace(
-                      /\D/g,
-                      ''
-                    )
-                    .slice(
-                      0,
-                      4
-                    )
-                )
-              }
-              placeholder="____"
-              placeholderTextColor={
-                COLORS.ghostText
-              }
-              keyboardType="number-pad"
-              maxLength={4}
-              allowFontScaling={
-                false
-              }
-              style={
-                styles.yearInput
-              }
-            />
-          </View>
-
-          {/* GENRES */}
-          <Pressable
-            style={({
-              pressed,
-            }) => [
-              styles.genreButton,
-
-              {
-                width:
-                  genreWidth,
-              },
-
-              pressed &&
-                styles.filterPressed,
-            ]}
-            onPress={() =>
-              setGenreModalVisible(
-                true
-              )
-            }
-          >
-            <View
-              style={
-                styles.genreButtonContent
-              }
-            >
-              <Text
-                style={
-                  styles.genreButtonText
-                }
-                numberOfLines={
-                  1
-                }
-              >
-                {selectedGenreIds.length ===
-                0
-                  ? 'TOUS GENRES'
-                  : `${selectedGenreIds.length} GENRE${
-                      selectedGenreIds.length >
-                      1
-                        ? 'S'
-                        : ''
-                    }`}
-              </Text>
-
-              <MaterialIcons
-                name="keyboard-arrow-down"
-                size={16}
-                color={
-                  COLORS.icon
-                }
-                style={{
-                  marginRight:
-                    -3,
-                }}
-              />
-            </View>
-          </Pressable>
-
-          {/* SESSION */}
-          <Pressable
-            style={({
-              pressed,
-            }) => [
-              styles.sessionFilterButton,
-
-              {
-                width:
-                  sessionWidth,
-              },
-
-              futureSessionsOnly &&
-                styles.sessionFilterButtonActive,
-
-              pressed &&
-                styles.filterPressed,
-            ]}
-            onPress={() =>
-              setFutureSessionsOnly(
-                !futureSessionsOnly
-              )
-            }
-          >
-            <View
-              style={
-                styles.sessionFilterContent
-              }
-            >
-              <MaterialIcons
-                name={
-                  futureSessionsOnly
-                    ? 'check-box'
-                    : 'check-box-outline-blank'
-                }
-                size={15}
-                color={
-                  COLORS.icon
-                }
-              />
-
-              <Text
-                style={
-                  styles.sessionFilterText
-                }
-                numberOfLines={
-                  1
-                }
-              >
-                AVEC SÉANCE
-              </Text>
-            </View>
-          </Pressable>
+              <View style={styles.sessionFilterContent}>
+                <MaterialIcons
+                  name={filter.checked ? 'check-box' : 'check-box-outline-blank'}
+                  size={15}
+                  color={COLORS.icon}
+                />
+                <Text style={styles.sessionFilterText} numberOfLines={1} adjustsFontSizeToFit>
+                  {filter.label}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
         </View>
       )}
     </View>
@@ -1191,206 +844,7 @@ export default function HomeScreen({
         )}
       </View>
 
-      {/* MODAL GENRES */}
-      <Modal
-        visible={
-          genreModalVisible
-        }
-        transparent
-        animationType="fade"
-        onRequestClose={() =>
-          setGenreModalVisible(
-            false
-          )
-        }
-      >
-        <View
-          style={
-            styles.genreModalOverlay
-          }
-        >
-          <Pressable
-            style={
-              StyleSheet.absoluteFill
-            }
-            onPress={() =>
-              setGenreModalVisible(
-                false
-              )
-            }
-          />
 
-          <View
-            style={
-              styles.genreModalBox
-            }
-          >
-            <View
-              style={
-                styles.genreModalHeader
-              }
-            >
-              <Text
-                style={
-                  styles.genreModalTitle
-                }
-              >
-                GENRES
-              </Text>
-
-              <Pressable
-                style={
-                  styles.genreModalClose
-                }
-                onPress={() =>
-                  setGenreModalVisible(
-                    false
-                  )
-                }
-              >
-                <Text
-                  style={
-                    styles.genreModalCloseText
-                  }
-                >
-                  ×
-                </Text>
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={[
-                styles.genreRow,
-
-                selectedGenreIds.length ===
-                  0 &&
-                  styles.genreRowSelected,
-              ]}
-              onPress={() =>
-                setSelectedGenreIds(
-                  []
-                )
-              }
-            >
-              <Text
-                style={
-                  styles.genreRowText
-                }
-              >
-                TOUS
-              </Text>
-
-              <View
-                style={[
-                  styles.genreCheckbox,
-
-                  selectedGenreIds.length ===
-                    0 &&
-                    styles.genreCheckboxSelected,
-                ]}
-              >
-                {selectedGenreIds.length ===
-                  0 && (
-                  <Text
-                    style={
-                      styles.genreCheckboxCheck
-                    }
-                  >
-                    ✓
-                  </Text>
-                )}
-              </View>
-            </Pressable>
-
-            <FlatList
-              data={
-                genres
-              }
-              keyExtractor={(
-                item
-              ) =>
-                String(
-                  item.id
-                )
-              }
-              showsVerticalScrollIndicator={
-                false
-              }
-              style={
-                styles.genreList
-              }
-              renderItem={({
-                item,
-              }) => {
-                const isSelected =
-                  selectedGenreIds.includes(
-                    item.id
-                  )
-
-                return (
-                  <Pressable
-                    style={[
-                      styles.genreRow,
-
-                      isSelected &&
-                        styles.genreRowSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedGenreIds(
-                        (
-                          current
-                        ) =>
-                          isSelected
-                            ? current.filter(
-                                (
-                                  id
-                                ) =>
-                                  id !==
-                                  item.id
-                              )
-                            : [
-                                ...current,
-                                item.id,
-                              ]
-                      )
-                    }}
-                  >
-                    <Text
-                      style={
-                        styles.genreRowText
-                      }
-                      numberOfLines={
-                        1
-                      }
-                    >
-                      {item.genre.toUpperCase()}
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.genreCheckbox,
-
-                        isSelected &&
-                          styles.genreCheckboxSelected,
-                      ]}
-                    >
-                      {isSelected && (
-                        <Text
-                          style={
-                            styles.genreCheckboxCheck
-                          }
-                        >
-                          ✓
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                )
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   )
 }
@@ -1434,8 +888,8 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 18,
+    paddingTop: 2,
+    paddingBottom: 10,
 
     backgroundColor: COLORS.primary,
 
@@ -1486,49 +940,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  searchInputWrapper: {
+    flex: 1,
+    minWidth: 0,
+    height: '100%',
+    marginLeft: 7,
+    position: 'relative',
+  },
+
   searchInput: {
     flex: 1,
     minWidth: 0,
-
-    height: '100%',
-
     paddingVertical: 0,
-    marginLeft: 7,
-
+    paddingHorizontal: 0,
     color: COLORS.text2,
+  },
 
+  searchTypography: {
     fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0,
   },
 
-  clearButton: {
-    width: 30,
-    height: 30,
-
-    flexShrink: 0,
-
-    alignItems: 'center',
+  searchPlaceholderContainer: {
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 15,
   },
 
-  clearButtonPressed: {
-    opacity: 0.6,
-  },
-
-  clearButtonText: {
-    marginTop: -2,
-
-    color: COLORS.icon,
-
-    fontSize: 23,
-    fontWeight: '900',
-    lineHeight: 25,
+  searchPlaceholder: {
+    color: COLORS.ghostText,
   },
 
   // ── MODE BUTTON ──────────────────────
@@ -1571,88 +1011,17 @@ const styles = StyleSheet.create({
   filtersRow: {
     width: '100%',
 
-    marginTop: 10,
-
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-
-  yearFilter: {
-    width: 63,
-    height: 36,
-
-    flexShrink: 0,
+    marginTop: 6,
 
     flexDirection: 'row',
     alignItems: 'center',
-
-    paddingHorizontal: 8,
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 9,
-  },
-
-  yearPrefix: {
-    marginRight: 3,
-
-    color: COLORS.text2,
-
-    fontSize: 13,
-    fontWeight: '900',
-  },
-
-  yearInput: {
-    flex: 1,
-    minWidth: 0,
-
-    height: '100%',
-    paddingVertical: 0,
-
-    color: COLORS.text2,
-
-    fontSize: 11,
-    fontWeight: '800',
-  },
-
-  genreButton: {
-    height: 36,
-
-    flexShrink: 0,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 9,
-  },
-
-  genreButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  genreButtonText: {
-    color: COLORS.text2,
-
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.4,
   },
 
   sessionFilterButton: {
-    height: 36,
-
-    flexShrink: 0,
-
-    paddingHorizontal: 9,
+    height: 30,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 4,
 
     alignItems: 'center',
     justifyContent: 'center',
@@ -1677,6 +1046,7 @@ const styles = StyleSheet.create({
   },
 
   sessionFilterText: {
+    flexShrink: 1,
     color: COLORS.text2,
 
     fontSize: 8,
@@ -1831,133 +1201,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
   },
 
-  // ── GENRE MODAL ──────────────────────
-
-  genreModalOverlay: {
-    flex: 1,
-
-    paddingHorizontal: 24,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor:
-      'rgba(0, 0, 0, 0.55)',
-  },
-
-  genreModalBox: {
-    width: '100%',
-    maxHeight: '70%',
-
-    padding: 16,
-
-    backgroundColor: COLORS.background,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 16,
-  },
-
-  genreModalHeader: {
-    marginBottom: 12,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  genreModalTitle: {
-    color: COLORS.text2,
-
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-
-  genreModalClose: {
-    width: 34,
-    height: 34,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 9,
-  },
-
-  genreModalCloseText: {
-    marginTop: -2,
-
-    color: COLORS.icon,
-
-    fontSize: 22,
-    fontWeight: '900',
-  },
-
-  genreList: {
-    flexGrow: 0,
-  },
-
-  genreRow: {
-    minHeight: 46,
-
-    marginBottom: 8,
-    paddingHorizontal: 12,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 10,
-  },
-
-  genreRowSelected: {
-    backgroundColor: COLORS.primary,
-  },
-
-  genreRowText: {
-    flex: 1,
-
-    marginRight: 12,
-
-    color: COLORS.text2,
-
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.6,
-  },
-
-  genreCheckbox: {
-    width: 22,
-    height: 22,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 6,
-  },
-
-  genreCheckboxSelected: {
-    backgroundColor: COLORS.primary,
-  },
-
-  genreCheckboxCheck: {
-    marginTop: -2,
-
-    color: COLORS.icon,
-
-    fontSize: 14,
-    fontWeight: '900',
-  },
 })

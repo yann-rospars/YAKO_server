@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  KeyboardAvoidingView,
   ScrollView,
   Platform,
   StatusBar,
@@ -110,10 +109,7 @@ export default function CompleteProfileScreen({
         backgroundColor={COLORS.primary}
       />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>YAKO</Text>
@@ -123,6 +119,7 @@ export default function CompleteProfileScreen({
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -295,7 +292,7 @@ export default function CompleteProfileScreen({
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   )
 }
@@ -308,15 +305,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
 
-  keyboardView: {
+  content: {
     flex: 1,
   },
 
   header: {
-    minHeight: 80,
     paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 16,
+    paddingTop: 2,
+    paddingBottom: 10,
 
     alignItems: 'center',
     justifyContent: 'center',
@@ -356,7 +352,7 @@ const styles = StyleSheet.create({
   },
 
   logoText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 30,
     fontWeight: '900',
@@ -406,7 +402,7 @@ const styles = StyleSheet.create({
   },
 
   stepBadgeText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 10,
     fontWeight: '900',
@@ -418,7 +414,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 20,
     fontWeight: '900',
@@ -446,7 +442,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 3,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 12,
     fontWeight: '900',
@@ -464,7 +460,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
 
-    color: COLORS.text1,
+    color: COLORS.text2,
     backgroundColor: COLORS.secondary,
 
     borderWidth: 3,
@@ -488,7 +484,7 @@ const styles = StyleSheet.create({
     left: 19,
     top: 17,
 
-    color: COLORS.text2,
+    color: COLORS.ghostText,
 
     fontFamily:
       Platform.OS === 'ios'
@@ -542,7 +538,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: COLORS.text1,
+    color: COLORS.text2,
 
     fontSize: 14,
     fontWeight: '900',

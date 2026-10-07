@@ -1,3 +1,4 @@
+import BackButton from '../components/BackButton'
 import { useCallback, useState } from 'react'
 import {
   FlatList,
@@ -8,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native'
 import { MaterialIcons } from '@expo/vector-icons'
 
@@ -16,9 +17,11 @@ import { supabase } from '../lib/supabase'
 import { Movie } from '../types/movie'
 
 import MovieCard from '../components/MovieCard'
+import AddMovieModal from '../components/AddMovieModal'
 import LoadingState from '../components/LoadingState'
 import EmptyState from '../components/EmptyState'
 import { COLORS } from '../theme/colors'
+import AddButton from '../components/AddButton'
 
 type ListInformation = {
   id: number
@@ -42,6 +45,10 @@ export default function ListDetailScreen({
     listId: number
     listName: string
   } = route.params
+
+  const [addModalVisible, setAddModalVisible] = useState(false)
+  const insets = useSafeAreaInsets()
+  const [headerHeight, setHeaderHeight] = useState(88 + insets.top)
 
   const [list, setList] =
     useState<ListInformation | null>(null)
@@ -373,55 +380,11 @@ export default function ListDetailScreen({
   */
 
   return (
-    <SafeAreaView
-      style={styles.root}
-      edges={['top']}
-    >
+    <View style={styles.root}>
       <View style={styles.screen}>
-        {/* HEADER FIXE */}
-        <View
-          style={[
-            styles.header,
-            list.type === 'system' &&
-              styles.systemHeader,
-          ]}
-        >
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.backButton}
-            onPress={() =>
-              navigation.goBack()
-            }
-          >
-            <MaterialIcons
-              name="arrow-back"
-              size={23}
-              color={COLORS.return}
-            />
-          </TouchableOpacity>
-
-          <View style={styles.headerText}>
-            <Text
-              style={styles.title}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {list.name || listName}
-            </Text>
-
-            <Text style={styles.movieCount}>
-              {movies.length}{' '}
-              {movies.length === 1
-                ? 'FILM'
-                : 'FILMS'}
-            </Text>
-          </View>
-
-          <View style={styles.headerSpacer} />
-        </View>
-
         {/* FILMS */}
         <FlatList
+          contentInsetAdjustmentBehavior="never"
           data={movies}
           numColumns={3}
           renderItem={renderMovie}
@@ -435,6 +398,7 @@ export default function ListDetailScreen({
           }
           contentContainerStyle={[
             styles.listContent,
+            { paddingTop: headerHeight },
             movies.length === 0 &&
               styles.emptyListContent,
           ]}
@@ -443,11 +407,59 @@ export default function ListDetailScreen({
             <EmptyState
               icon="🎬"
               title="LISTE VIDE"
-              description="Ajoute des films depuis leur fiche avec le bouton +."
+              description="Ajoute des films avec le bouton + en haut de cette liste."
             />
           }
         />
+
+        {/* Fixed header; its transparent margins let the films scroll underneath. */}
+        <View
+          pointerEvents="box-none"
+          style={[styles.headerOverlay, { paddingTop: insets.top }]}
+          onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+        >
+          <View
+            style={[
+              styles.header,
+              list.type === 'system' &&
+                styles.systemHeader,
+            ]}
+          >
+            <BackButton onPress={() => navigation.goBack()} />
+
+            <View style={styles.headerText}>
+              <Text
+                style={styles.title}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {list.name || listName}
+              </Text>
+
+              <Text style={styles.movieCount}>
+                {movies.length}{' '}
+                {movies.length === 1
+                  ? 'FILM'
+                  : 'FILMS'}
+              </Text>
+            </View>
+
+            <AddButton onPress={() => setAddModalVisible(true)} />
+          </View>
+        </View>
       </View>
+
+      {addModalVisible && (
+        <AddMovieModal
+          listId={listId}
+          onClose={() => setAddModalVisible(false)}
+          onMembershipChange={(movie, included) => {
+            setMovies((current) => included
+              ? current.some((item) => item.id === movie.id) ? current : [movie, ...current]
+              : current.filter((item) => item.id !== movie.id))
+          }}
+        />
+      )}
 
       {/* MODAL CONFIRMATION RETRAIT */}
       <Modal
@@ -524,7 +536,7 @@ export default function ListDetailScreen({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -543,19 +555,26 @@ const styles = StyleSheet.create({
 
   // ── HEADER ───────────────────────────
 
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+  },
+
   header: {
-    minHeight: 76,
+    minHeight: 66,
+    backgroundColor: COLORS.secondary,
 
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 18,
+    marginTop: 2,
+    marginBottom: 10,
 
     paddingHorizontal: 10,
 
     flexDirection: 'row',
     alignItems: 'center',
-
-    backgroundColor: COLORS.secondary,
 
     borderWidth: 3,
     borderColor: COLORS.contours,
@@ -566,7 +585,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
 
-  backButton: {
+  addButtonBase: {
     width: 42,
     height: 42,
 
@@ -623,8 +642,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
   },
 
-  headerSpacer: {
-    width: 42,
+  addButton: {
+    backgroundColor: COLORS.primary,
+  },
+
+  addButtonText: {
+    marginTop: -3,
+    color: COLORS.icon,
+    fontSize: 25,
+    fontWeight: '900',
   },
 
   // ── MOVIE GRID ───────────────────────

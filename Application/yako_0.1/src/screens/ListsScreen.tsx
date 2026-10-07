@@ -27,6 +27,7 @@ import {
 import { supabase } from '../lib/supabase'
 import LoadingState from '../components/LoadingState'
 import { COLORS } from '../theme/colors'
+import AddButton from '../components/AddButton'
 
 type ListWithCount = {
   id: number
@@ -534,27 +535,7 @@ export default function ListsScreen({
               {/* LISTES PERSONNALISÉES */}
               <View style={styles.section}>
                 <View style={ styles.customSectionHeader}>
-                  <TouchableOpacity
-                    activeOpacity={
-                      0.8
-                    }
-                    style={
-                      styles.addBtn
-                    }
-                    onPress={() =>
-                      setModalVisible(
-                        true
-                      )
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.addBtnText
-                      }
-                    >
-                      +
-                    </Text>
-                  </TouchableOpacity>
+                  <AddButton onPress={() => setModalVisible(true)} />
                 </View>
 
                 {customLists.length ===
@@ -929,10 +910,11 @@ const styles = StyleSheet.create({
   // ── HEADER ───────────────────────────
 
   topBar: {
-    minHeight: 64,
+    minHeight: 0,
 
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingBottom:10,
+    paddingTop:2,
 
     alignItems: 'center',
     justifyContent: 'center',
@@ -1000,41 +982,6 @@ const styles = StyleSheet.create({
 
   customSectionTitle: {
     flex: 1,
-  },
-
-  // ── ADD BUTTON ───────────────────────
-
-  addBtn: {
-    width: 42,
-    height: 42,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 12,
-
-    shadowColor: COLORS.contours,
-    shadowOffset: {
-      width: 3,
-      height: 3,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 4,
-  },
-
-  addBtnText: {
-    marginTop: -2,
-
-    color: COLORS.icon,
-
-    fontSize: 24,
-    fontWeight: '900',
   },
 
   // ── LISTS ────────────────────────────

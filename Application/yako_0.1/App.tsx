@@ -4,6 +4,10 @@ import {
 } from 'react'
 
 import { Text } from 'react-native'
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+} from 'react-native-safe-area-context'
 
 import {
   NavigationContainer,
@@ -18,6 +22,14 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen'
 import MainTabs from './src/navigation/MainTabs'
 
 export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <AppContent />
+    </SafeAreaProvider>
+  )
+}
+
+function AppContent() {
   const [
     session,
     setSession,

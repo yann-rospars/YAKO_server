@@ -1,3 +1,6 @@
+import ModalCloseButton from '../components/ModalCloseButton'
+import SearchClearButton from '../components/SearchClearButton'
+import BackButton from '../components/BackButton'
 import { useEffect, useMemo, useState } from 'react'
 import {
   View,
@@ -14,7 +17,7 @@ import {
   FlatList,
   Keyboard,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { supabase } from '../lib/supabase'
 import { Movie } from '../types/movie'
@@ -25,6 +28,7 @@ import SessionCalendar from '../components/SessionCalendar'
 import Badge from '../components/ui/Badge'
 import LoadingState from '../components/LoadingState'
 import { COLORS } from '../theme/colors'
+import AddButton from '../components/AddButton'
 
 const getDateKey = (date: string) =>
   date.split('T')[0] || date.split(' ')[0]
@@ -41,6 +45,7 @@ export default function MovieScreen({
   navigation,
 }: any) {
   const { movieId } = route.params
+  const insets = useSafeAreaInsets()
 
   const [movie, setMovie] =
     useState<Movie | null>(null)
@@ -587,22 +592,22 @@ export default function MovieScreen({
   const backdrop = getBackdrop()
 
   return (
-    <SafeAreaView
-      style={styles.root}
-      edges={['top']}
-    >
+    <View style={styles.root}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor={COLORS.primary}
+        backgroundColor="transparent"
+        translucent
       />
 
       <ScrollView
         showsVerticalScrollIndicator={
           false
         }
-        contentContainerStyle={
-          styles.scrollContent
-        }
+        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top },
+        ]}
       >
         {/* HERO */}
         <View style={styles.hero}>
@@ -628,19 +633,9 @@ export default function MovieScreen({
             </View>
           )}
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.backBtn}
-            onPress={() =>
-              navigation.goBack()
-            }
-          >
-            <Text
-              style={styles.backBtnText}
-            >
-              ←
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.backButtonPosition}>
+            <BackButton onPress={() => navigation.goBack()} />
+          </View>
         </View>
 
         {/* INFORMATIONS PRINCIPALES */}
@@ -775,19 +770,7 @@ export default function MovieScreen({
                 )}
               </View>
 
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.addBtn}
-                onPress={openListModal}
-              >
-                <Text
-                  style={
-                    styles.addBtnText
-                  }
-                >
-                  +
-                </Text>
-              </TouchableOpacity>
+              <AddButton onPress={openListModal} />
             </View>
           </View>
         </View>
@@ -951,19 +934,7 @@ export default function MovieScreen({
                 AJOUTER À UNE LISTE
               </Text>
 
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={closeListModal}
-                style={styles.listModalClose}
-              >
-                <Text
-                  style={
-                    styles.listModalCloseText
-                  }
-                >
-                  ×
-                </Text>
-              </TouchableOpacity>
+              <ModalCloseButton onPress={closeListModal} />
             </View>
 
             <View
@@ -990,23 +961,7 @@ export default function MovieScreen({
               />
 
               {listSearch.length > 0 && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    setListSearch('')
-                  }
-                  style={
-                    styles.listSearchClear
-                  }
-                >
-                  <Text
-                    style={
-                      styles.listSearchClearText
-                    }
-                  >
-                    ×
-                  </Text>
-                </TouchableOpacity>
+            <SearchClearButton onPress={() => setListSearch('')} />
               )}
             </View>
 
@@ -1102,7 +1057,7 @@ export default function MovieScreen({
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -1150,41 +1105,10 @@ const styles = StyleSheet.create({
 
   // ── BACK BUTTON ──────────────────────
 
-  backBtn: {
+  backButtonPosition: {
     position: 'absolute',
     top: 16,
     left: 16,
-
-    width: 44,
-    height: 44,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 12,
-
-    shadowColor: COLORS.contours,
-    shadowOffset: {
-      width: 3,
-      height: 3,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 5,
-  },
-
-  backBtnText: {
-    marginTop: -2,
-
-    color: COLORS.return,
-
-    fontSize: 24,
-    fontWeight: '900',
   },
 
   // ── MOVIE HEADER ─────────────────────
@@ -1331,41 +1255,6 @@ const styles = StyleSheet.create({
 
     fontSize: 8,
     fontWeight: '700',
-  },
-
-  addBtn: {
-    width: 38,
-    height: 38,
-
-    flexShrink: 0,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 11,
-
-    shadowColor: COLORS.contours,
-    shadowOffset: {
-      width: 2,
-      height: 2,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 3,
-  },
-
-  addBtnText: {
-    marginTop: -3,
-
-    color: COLORS.icon,
-
-    fontSize: 25,
-    fontWeight: '900',
   },
 
   // ── BODY ─────────────────────────────
@@ -1633,41 +1522,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  listModalClose: {
-    width: 36,
-    height: 36,
-
-    marginLeft: 12,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 3,
-    borderColor: COLORS.contours,
-    borderRadius: 10,
-
-    shadowColor: COLORS.contours,
-    shadowOffset: {
-      width: 2,
-      height: 2,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 3,
-  },
-
-  listModalCloseText: {
-    marginTop: -3,
-
-    color: COLORS.icon,
-
-    fontSize: 24,
-    fontWeight: '900',
-  },
-
   // ── LIST SEARCH ──────────────────────
 
   listSearchContainer: {
@@ -1709,39 +1563,6 @@ const styles = StyleSheet.create({
 
     fontSize: 14,
     fontWeight: '600',
-  },
-
-  listSearchClear: {
-    width: 28,
-    height: 28,
-
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: COLORS.primary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 14,
-
-    shadowColor: COLORS.contours,
-    shadowOffset: {
-      width: 2,
-      height: 2,
-    },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-
-    elevation: 3,
-  },
-
-  listSearchClearText: {
-    marginTop: -2,
-
-    color: COLORS.icon,
-
-    fontSize: 20,
-    fontWeight: '900',
   },
 
   // ── LIST CONTENT ─────────────────────

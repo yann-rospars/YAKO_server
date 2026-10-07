@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  KeyboardAvoidingView,
   ScrollView,
   Platform,
   StatusBar,
@@ -114,12 +113,12 @@ export default function AuthScreen({ setAuthFlow }: any) {
         .from('lists')
         .upsert(
           [
-            {
-              user_id: user.id,
-              name: 'Déjà notées',
-              type: 'system',
-              is_public: false,
-            },
+            // {
+            //   user_id: user.id,
+            //   name: 'Déjà notées',
+            //   type: 'system',
+            //   is_public: false,
+            // },
             {
               user_id: user.id,
               name: 'À voir au cinema',
@@ -174,10 +173,7 @@ export default function AuthScreen({ setAuthFlow }: any) {
         backgroundColor={COLORS.primary}
       />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>YAKO</Text>
@@ -187,6 +183,7 @@ export default function AuthScreen({ setAuthFlow }: any) {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -460,7 +457,7 @@ export default function AuthScreen({ setAuthFlow }: any) {
           </Text>
         </ScrollView>
 
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   )
 }
@@ -473,15 +470,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
 
-  keyboardView: {
+  content: {
     flex: 1,
   },
 
   header: {
-    minHeight: 80,
     paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 16,
+    paddingTop: 2,
+    paddingBottom: 10,
 
     alignItems: 'center',
     justifyContent: 'center',
@@ -649,7 +645,7 @@ const styles = StyleSheet.create({
     left: 19,
     top: 17,
 
-    color: COLORS.text2,
+    color: COLORS.ghostText,
 
     fontFamily:
       Platform.OS === 'ios'

@@ -1,3 +1,4 @@
+import BackButton from '../components/BackButton'
 import {
   useCallback,
   useEffect,
@@ -32,8 +33,9 @@ import {
 
 import Animated, {
   FadeIn,
-  FadeOut,
   LinearTransition,
+  runOnJS,
+  LayoutAnimationConfig,
 } from 'react-native-reanimated'
 
 import { supabase } from '../lib/supabase'
@@ -312,6 +314,17 @@ const arraysEqual = (
 }
 
 export default function CalendarScreen() {
+  const headerTransitionSequence = useRef(0)
+  const [pendingHeaderTransition, setPendingHeaderTransition] = useState<number | null>(null)
+  const finishHeaderTransition = useCallback((sequence: number) => {
+    setPendingHeaderTransition((pending) => pending === sequence ? null : pending)
+  }, [])
+
+  const pendingCalendarScroll = useRef<number | null>(null)
+  const dayScrollFrame = useRef<number | null>(null)
+  const monthDayWidth = 42
+  const monthDaysScrollRef = useRef<ScrollView>(null)
+
   const navigation =
     useNavigation<any>()
 
@@ -419,37 +432,21 @@ export default function CalendarScreen() {
     ----------------------------------
   */
 
-  const fetchSessionDays =
-    useCallback(async () => {
-      setLoading(true)
+  const fetchSessionDays = useCallback(async () => {
+    // Only the first load uses a loader; focus refreshes keep the UI visible.
+    try {
+      const { data, error } = await supabase.rpc('get_session_days')
 
-      const {
-        data,
-        error,
-      } = await supabase
-        .rpc(
-          'get_session_days'
-        )
+      if (error) throw error
 
-      if (error) {
-        console.error(
-          'Erreur récupération jours :',
-          error
-        )
-
-        setSessionDays([])
-        setLoading(false)
-
-        return
-      }
-
-      setSessionDays(
-        (data ?? []) as
-          SessionDayRow[]
-      )
-
+      setSessionDays((data ?? []) as SessionDayRow[])
+    } catch (error) {
+      // Keep the last successful data if a background refresh fails.
+      console.error('Erreur r?cup?ration jours :', error)
+    } finally {
       setLoading(false)
-    }, [])
+    }
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
@@ -697,12 +694,11 @@ export default function CalendarScreen() {
           cells.length;
           index += 7
         ) {
-          weeks.push(
-            cells.slice(
-              index,
-              index + 7
-            )
-          )
+          const week = cells.slice(index, index + 7)
+
+          if (week.some((day) => day !== null)) {
+            weeks.push(week)
+          }
         }
 
         result.push({
@@ -771,6 +767,18 @@ export default function CalendarScreen() {
   const dayMode =
     selectedDate !== null &&
     selectedCalendarLocation !== null
+
+  const headerLayoutTransition = useMemo(() => {
+    if (!dayMode) return undefined
+
+    const sequence = pendingHeaderTransition
+    return LinearTransition.duration(320).withCallback((finished) => {
+      'worklet'
+      if (finished && sequence !== null) {
+        runOnJS(finishHeaderTransition)(sequence)
+      }
+    })
+  }, [dayMode, pendingHeaderTransition, finishHeaderTransition])
 
   /*
     ----------------------------------
@@ -868,38 +876,38 @@ export default function CalendarScreen() {
     ----------------------------------
   */
 
-  const handleDayPress = (
-    day: CalendarDay
-  ) => {
+  const handleDayPress = (day: CalendarDay) => {
     if (!selectedDate) {
-      calendarScrollY.current =
-        currentScrollY.current
+      calendarScrollY.current = currentScrollY.current
+      headerTransitionSequence.current += 1
+      setPendingHeaderTransition(headerTransitionSequence.current)
     }
 
-    setSelectedDate(
-      day.dateKey
-    )
+    if (selectedDate !== day.dateKey) {
+      setDayLoading(true)
+    }
+    pendingCalendarScroll.current = null
+    setSelectedDate(day.dateKey)
 
-    requestAnimationFrame(() => {
-      scrollViewRef.current?.scrollTo({
-        y: 0,
-        animated: true,
-      })
+    if (dayScrollFrame.current !== null) {
+      cancelAnimationFrame(dayScrollFrame.current)
+    }
+    dayScrollFrame.current = requestAnimationFrame(() => {
+      dayScrollFrame.current = null
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true })
     })
   }
 
-  const handleBackToCalendar =
-    () => {
-      setSelectedDate(null)
-      setDayMovies([])
-
-      requestAnimationFrame(() => {
-        scrollViewRef.current?.scrollTo({
-          y: calendarScrollY.current,
-          animated: true,
-        })
-      })
+  const handleBackToCalendar = () => {
+    if (dayScrollFrame.current !== null) {
+      cancelAnimationFrame(dayScrollFrame.current)
+      dayScrollFrame.current = null
     }
+    pendingCalendarScroll.current = calendarScrollY.current
+    setPendingHeaderTransition(null)
+    setSelectedDate(null)
+    setDayMovies([])
+  }
 
   /*
     ----------------------------------
@@ -1268,88 +1276,103 @@ export default function CalendarScreen() {
     </View>
   )
 
-  /*
-    ----------------------------------
-    LOADING
-    ----------------------------------
-  */
+  const renderMonthDays = () => {
+    if (!selectedDate) return null
 
-  if (loading) {
+    const selected = keyToDate(selectedDate)
+    const year = selected.getFullYear()
+    const month = selected.getMonth()
+    const numberOfDays = new Date(year, month + 1, 0).getDate()
+    const today = startOfDay(new Date())
+    const lastSessionKey = sessionDays[sessionDays.length - 1]?.day
+
     return (
-      <SafeAreaView
-        style={
-          styles.root
-        }
-        edges={[
-          'top',
-        ]}
-      >
-        <View
-          style={
-            styles.header
-          }
+      <View style={styles.monthDaysBand}>
+        <ScrollView
+          ref={monthDaysScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.monthDaysScroll}
+          contentContainerStyle={styles.monthDaysContent}
+          onLayout={(event) => {
+            const viewportWidth = event.nativeEvent.layout.width
+            monthDaysScrollRef.current?.scrollTo({
+              x: Math.max(
+                0,
+                (selected.getDate() - 0.5) * monthDayWidth - viewportWidth / 2
+              ),
+              animated: false,
+            })
+          }}
         >
-          <Text
-            style={
-              styles.headerTitle
+          {Array.from({ length: numberOfDays }, (_, index) => {
+            const date = new Date(year, month, index + 1)
+            const dateKey = dateToKey(date)
+            const day: CalendarDay = {
+              date,
+              dateKey,
+              dayNumber: index + 1,
+              hasSessions: sessionDates.has(dateKey),
+              isAfterLastSession: !lastSessionKey || dateKey > lastSessionKey,
             }
-          >
-            CALENDRIER
-          </Text>
-        </View>
+            const disabled = date < today || day.isAfterLastSession
 
-        <LoadingState fullScreen />
-      </SafeAreaView>
+            return (
+              <View
+                key={dateKey}
+                style={[styles.monthDayColumn, { width: monthDayWidth }]}
+              >
+                <Text style={[styles.weekDayText, styles.monthDayLabel]}>
+                  {WEEK_DAYS[getMondayIndex(date)]}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={date.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+                  accessibilityState={{ disabled, selected: selectedDate === dateKey }}
+                  disabled={disabled}
+                  onPress={() => handleDayPress(day)}
+                  style={({ pressed }) => [
+                    styles.dayButton,
+                    styles.monthDayButton,
+                    day.hasSessions && styles.dayButtonWithSessions,
+                    selectedDate === dateKey && styles.dayButtonSelected,
+                    disabled && styles.dayButtonDisabled,
+                    isSameDay(date, today) && styles.todayButton,
+                    day.hasSessions && pressed && styles.dayButtonPressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.dayNumber,
+                      day.hasSessions && styles.dayNumberWithSessions,
+                      disabled && styles.dayNumberDisabled,
+                    ]}
+                  >
+                    {day.dayNumber}
+                  </Text>
+                </Pressable>
+              </View>
+            )
+          })}
+        </ScrollView>
+        <View
+          pointerEvents="none"
+          style={[styles.monthDaysFade, styles.monthDaysFadeLeft]}
+        />
+        <View
+          pointerEvents="none"
+          style={[styles.monthDaysFade, styles.monthDaysFadeRight]}
+        />
+      </View>
     )
   }
 
-  /*
-    ----------------------------------
-    RETURN
-    ----------------------------------
-  */
-
-  return (
-    <SafeAreaView
-      style={
-        styles.root
-      }
-      edges={[
-        'top',
-      ]}
-    >
-      <View
-        style={
-          styles.header
-        }
-      >
-        <Text
-          style={
-            styles.headerTitle
-          }
-        >
-          CALENDRIER
-        </Text>
-      </View>
-
-      <ScrollView
-        ref={scrollViewRef}
-        style={
-          styles.scrollView
-        }
-        contentContainerStyle={
-          styles.scrollContent
-        }
-        showsVerticalScrollIndicator={
-          false
-        }
-        onScroll={(event) => {
-          currentScrollY.current =
-            event.nativeEvent.contentOffset.y
-        }}
-        scrollEventThrottle={16}
-      >
-        {months.length ===
+  const renderCalendar = () => (
+    months.length ===
         0 ? (
           <View
             style={
@@ -1375,48 +1398,23 @@ export default function CalendarScreen() {
           </View>
         ) : (
           <Animated.View
-            layout={
-              LinearTransition
-                .duration(320)
-            }
+            layout={dayMode ? LinearTransition.duration(320) : undefined}
           >
             {dayMode &&
               selectedDate && (
                 <Animated.View
-                  entering={
-                    FadeIn.duration(220)
-                  }
-                  exiting={
-                    FadeOut.duration(140)
-                  }
-                  layout={
-                    LinearTransition
-                      .duration(320)
-                  }
+                  entering={dayMode ? FadeIn.duration(220) : undefined}
+                  layout={dayMode ? LinearTransition.duration(320) : undefined}
                   style={
                     styles.dayModeHeader
                   }
                 >
-                  <Pressable
-                    onPress={
-                      handleBackToCalendar
-                    }
-                    style={({
-                      pressed,
-                    }) => [
-                      styles.dayModeBackButton,
-                      pressed &&
-                        styles.dayModeBackButtonPressed,
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="arrow-back"
-                      size={20}
-                      color={
-                        COLORS.return
-                      }
+                  <View style={styles.backButtonSpacing}>
+                    <BackButton
+                      onPress={handleBackToCalendar}
+                      accessibilityLabel="Retour au calendrier global"
                     />
-                  </Pressable>
+                  </View>
 
                   <Text
                     style={
@@ -1431,31 +1429,11 @@ export default function CalendarScreen() {
                         ]
                       : ''}
                   </Text>
-
-                  <Text
-                    style={
-                      styles.dayModeDate
-                    }
-                    numberOfLines={1}
-                  >
-                    {keyToDate(
-                      selectedDate
-                    ).toLocaleDateString(
-                      'fr-FR',
-                      {
-                        weekday:
-                          'long',
-                        day:
-                          'numeric',
-                        month:
-                          'long',
-                      }
-                    )}
-                  </Text>
+                  {renderMonthDays()}
                 </Animated.View>
               )}
 
-            {months.map(
+            {!dayMode && months.map(
               (month) => {
                 const monthSelected =
                   dayMode &&
@@ -1474,16 +1452,8 @@ export default function CalendarScreen() {
                     key={
                       month.key
                     }
-                    layout={
-                      LinearTransition
-                        .duration(320)
-                    }
-                    entering={
-                      FadeIn.duration(220)
-                    }
-                    exiting={
-                      FadeOut.duration(180)
-                    }
+                    layout={dayMode ? LinearTransition.duration(320) : undefined}
+                    entering={dayMode ? FadeIn.duration(220) : undefined}
                     style={[
                       styles.monthSection,
                       dayMode &&
@@ -1492,12 +1462,7 @@ export default function CalendarScreen() {
                   >
                     {!dayMode && (
                       <Animated.View
-                        entering={
-                          FadeIn.duration(220)
-                        }
-                        exiting={
-                          FadeOut.duration(140)
-                        }
+                        entering={dayMode ? FadeIn.duration(220) : undefined}
                         style={
                           styles.monthHeader
                         }
@@ -1515,10 +1480,7 @@ export default function CalendarScreen() {
                     )}
 
                     <Animated.View
-                      layout={
-                        LinearTransition
-                          .duration(320)
-                      }
+                      layout={dayMode ? LinearTransition.duration(320) : undefined}
                       style={
                         styles.weekHeader
                       }
@@ -1549,10 +1511,7 @@ export default function CalendarScreen() {
                     </Animated.View>
 
                     <Animated.View
-                      layout={
-                        LinearTransition
-                          .duration(320)
-                      }
+                      layout={dayMode ? LinearTransition.duration(320) : undefined}
                       style={
                         styles.weeksContainer
                       }
@@ -1579,16 +1538,8 @@ export default function CalendarScreen() {
                               key={
                                 `${month.key}-week-${weekIndex}`
                               }
-                              layout={
-                                LinearTransition
-                                  .duration(320)
-                              }
-                              entering={
-                                FadeIn.duration(220)
-                              }
-                              exiting={
-                                FadeOut.duration(160)
-                              }
+                              layout={dayMode ? LinearTransition.duration(320) : undefined}
+                              entering={dayMode ? FadeIn.duration(220) : undefined}
                               style={
                                 styles.weekRow
                               }
@@ -1677,13 +1628,6 @@ export default function CalendarScreen() {
                                           }
                                         </Text>
 
-                                        {day.hasSessions && (
-                                          <View
-                                            style={
-                                              styles.sessionIndicator
-                                            }
-                                          />
-                                        )}
                                       </Pressable>
                                     </View>
                                   )
@@ -1699,27 +1643,10 @@ export default function CalendarScreen() {
               }
             )}
           </Animated.View>
-        )}
+        )
+  )
 
-        {dayMode &&
-          selectedDate && (
-            <Animated.View
-              entering={
-                FadeIn
-                  .delay(90)
-                  .duration(240)
-              }
-              exiting={
-                FadeOut.duration(140)
-              }
-              layout={
-                LinearTransition
-                  .duration(320)
-              }
-              style={
-                styles.dayDetail
-              }
-            >
+  const renderArrondissementSelector = () => (
               <Pressable
                 onPress={() =>
                   setArrondissementModalVisible(
@@ -1760,8 +1687,90 @@ export default function CalendarScreen() {
                   />
                 </View>
               </Pressable>
+  )
 
-              {dayLoading ? (
+  /*
+    ----------------------------------
+    RETURN
+    ----------------------------------
+  */
+
+  return (
+    <LayoutAnimationConfig
+      skipEntering={!dayMode}
+      skipExiting
+    >
+    <SafeAreaView
+      style={
+        styles.root
+      }
+      edges={[
+        'top',
+      ]}
+    >
+      <Animated.View
+        layout={headerLayoutTransition}
+        style={[
+          styles.header,
+          dayMode && styles.fixedDayHeader,
+        ]}
+      >
+        {dayMode ? (
+          <>
+            {renderCalendar()}
+            {renderArrondissementSelector()}
+          </>
+        ) : (
+          <Text style={styles.headerTitle}>
+            CALENDRIER
+          </Text>
+        )}
+      </Animated.View>
+
+      <ScrollView
+        ref={scrollViewRef}
+        style={
+          styles.scrollView
+        }
+        onContentSizeChange={() => {
+          if (pendingCalendarScroll.current !== null && !dayMode) {
+            scrollViewRef.current?.scrollTo({
+              y: pendingCalendarScroll.current,
+              animated: false,
+            })
+            pendingCalendarScroll.current = null
+          }
+        }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          loading && styles.loadingContent,
+          dayMode && styles.dayScrollContent,
+        ]}
+        showsVerticalScrollIndicator={
+          false
+        }
+        onScroll={(event) => {
+          currentScrollY.current =
+            event.nativeEvent.contentOffset.y
+        }}
+        scrollEventThrottle={16}
+      >
+        {loading ? <LoadingState fullScreen /> : !dayMode && renderCalendar()}
+
+        {dayMode &&
+          selectedDate && (
+            <Animated.View
+              entering={
+                FadeIn
+                  .delay(90)
+                  .duration(240)
+              }
+              layout={dayMode ? LinearTransition.duration(320) : undefined}
+              style={
+                styles.dayDetail
+              }
+            >
+              {dayLoading || pendingHeaderTransition !== null ? (
                 <LoadingState />
               ) : (
                 <>
@@ -2084,6 +2093,7 @@ export default function CalendarScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </LayoutAnimationConfig>
   )
 }
 
@@ -2107,6 +2117,10 @@ const styles =
         COLORS.background,
     },
 
+    loadingContent: {
+      flexGrow: 1,
+    },
+
     scrollContent: {
       paddingHorizontal: 12,
       paddingTop: 18,
@@ -2123,7 +2137,7 @@ const styles =
       minHeight: 64,
 
       paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingVertical: 12,
 
       alignItems: 'center',
       justifyContent: 'center',
@@ -2147,48 +2161,27 @@ const styles =
       textAlign: 'center',
     },
 
+    fixedDayHeader: {
+      alignItems: 'stretch',
+      paddingHorizontal: 12,
+      paddingTop: 6,
+    },
+
     dayModeHeader: {
       minHeight: 44,
-      marginBottom: 10,
+      marginBottom: 0,
       paddingHorizontal: 2,
 
       flexDirection: 'row',
       alignItems: 'center',
     },
 
-    dayModeBackButton: {
-      width: 36,
-      height: 36,
-
+    backButtonSpacing: {
       marginRight: 10,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      backgroundColor:
-        COLORS.secondary,
-
-      borderWidth: 2,
-      borderColor:
-        COLORS.contours,
-
-      borderRadius: 9,
-
-      shadowColor:
-        COLORS.contours,
-
-      shadowOffset: {
-        width: 2,
-        height: 2,
-      },
-
-      shadowOpacity: 1,
-      shadowRadius: 0,
-
-      elevation: 3,
     },
 
     dayModeMonth: {
+      flexShrink: 0,
       color: COLORS.text2,
 
       fontSize: 14,
@@ -2196,40 +2189,63 @@ const styles =
       letterSpacing: 0.5,
     },
 
-    dayModeBackButtonPressed: {
-      transform: [
-        { translateX: 1 },
-        { translateY: 1 },
-      ],
-
-      shadowOffset: {
-        width: 1,
-        height: 1,
-      },
-
-      elevation: 1,
-    },
-
-    dayModeDate: {
-      flex: 1,
-
-      color:
-        COLORS.text1,
-
-      fontSize: 16,
-      fontWeight: '900',
-
-      textTransform: 'capitalize',
-    },
-
     /*
       ----------------------------------
-      MOIS
+      MOIS (fenetre 1)
       ----------------------------------
     */
 
     monthSection: {
       marginBottom: 30,
+    },
+
+    monthDaysBand: {
+      flex: 1,
+      minWidth: 0,
+      marginLeft: 10,
+      position: 'relative',
+    },
+
+    monthDaysFade: {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      width: 36,
+      zIndex: 1,
+    },
+
+    monthDaysFadeLeft: {
+      left: 0,
+      experimental_backgroundImage:
+        `linear-gradient(to right, ${COLORS.primary} 0%, ${COLORS.primary} 20%, transparent 100%)`,
+    },
+
+    monthDaysFadeRight: {
+      right: 0,
+      experimental_backgroundImage:
+        `linear-gradient(to left, ${COLORS.primary} 0%, ${COLORS.primary} 20%, transparent 100%)`,
+    },
+
+    monthDaysScroll: {
+      flexGrow: 0,
+    },
+
+    monthDaysContent: {
+      paddingBottom: 4,
+    },
+
+    monthDayColumn: {
+      paddingHorizontal: 3,
+      alignItems: 'center',
+    },
+
+    monthDayButton: {
+      width: 36,
+      height: 36,
+    },
+
+    monthDayLabel: {
+      marginBottom: 4,
     },
 
     monthSectionDayMode: {
@@ -2388,28 +2404,18 @@ const styles =
       opacity: 0.65,
     },
 
-    sessionIndicator: {
-      position: 'absolute',
-
-      bottom: 5,
-
-      width: 4,
-      height: 4,
-
-      backgroundColor:
-        COLORS.icon,
-
-      borderRadius: 2,
-    },
-
     /*
       ----------------------------------
       DÉTAIL JOUR
       ----------------------------------
     */
 
+    dayScrollContent: {
+      paddingTop: 0,
+    },
+
     dayDetail: {
-      paddingTop: 10,
+      paddingTop: 0,
       paddingBottom: 0,
     },
 
@@ -2421,9 +2427,10 @@ const styles =
 
     arrondissementSelector: {
       width: '100%',
-      height: 42,
+      height: 36,
 
-      marginBottom: 7.5,
+      marginTop: 4,
+      marginBottom: 0,
       paddingHorizontal: 12,
 
       justifyContent: 'center',

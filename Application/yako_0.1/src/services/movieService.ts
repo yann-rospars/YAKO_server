@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 import { Movie } from '../types/movie'
 import {
   getCurrentISOString,
+  getDateYearsAgo,
 } from '../utils/date'
 
 export type HomeMovieFilters = {
@@ -9,6 +10,8 @@ export type HomeMovieFilters = {
   minYear?: string
   maxYear?: string
   genreIds?: number[]
+  includeNewReleases?: boolean
+  includeOlderReleases?: boolean
   futureSessionsOnly?: boolean
   offset?: number
   limit?: number
@@ -98,10 +101,14 @@ export async function getHomeMovies({
   minYear = '',
   maxYear = '',
   genreIds = [],
+  includeNewReleases = true,
+  includeOlderReleases = true,
   futureSessionsOnly = false,
   offset = 0,
   limit = 18,
 }: HomeMovieFilters = {}): Promise<Movie[]> {
+  if (!includeNewReleases && !includeOlderReleases) return []
+
   const nowISO =
     getCurrentISOString()
 
@@ -186,6 +193,17 @@ export async function getHomeMovies({
     )
   }
 
+  // Both categories selected means no restriction, including unknown release dates.
+  if (includeNewReleases !== includeOlderReleases) {
+    const cutoff = getDateYearsAgo(1)
+    if (includeNewReleases) {
+      query = query.gt('release_date', cutoff)
+        .lte('release_date', nowISO.split('T')[0])
+    } else {
+      query = query.lte('release_date', cutoff)
+    }
+  }
+
   /*
     ----------------------------------
     DATE MINIMUM
@@ -245,6 +263,7 @@ export async function getHomeMovies({
     .order('popularity', {
       ascending: false,
     })
+    .order('id', { ascending: true })
     .range(
       offset,
       offset + limit - 1

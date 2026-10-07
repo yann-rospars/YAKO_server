@@ -1,4 +1,5 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 
 import HomeScreen from '../screens/HomeScreen'
@@ -9,7 +10,6 @@ import ListsScreen from '../screens/ListsScreen'
 import MovieScreen from '../screens/MovieScreen'
 import CinemaScreen from '../screens/CinemaScreen'
 import ListDetailScreen from '../screens/ListDetailScreen'
-import EditAccountScreen from '../screens/EditAccountScreen'
 import FriendScreen from '../screens/FriendScreen'
 
 import HomeFooter from '../components/HomeFooter'
@@ -112,11 +112,6 @@ function AccountStack() {
       />
 
       <AccountStackNavigator.Screen
-        name="EditAccount"
-        component={EditAccountScreen}
-      />
-
-      <AccountStackNavigator.Screen
         name="Friends"
         component={FriendScreen}
       />
@@ -174,8 +169,14 @@ export default function MainTabs() {
       screenOptions={{
         headerShown: false,
       }}
-      tabBar={(props) => (
+      tabBar={(props) => {
+        const currentTab = props.state.routes[props.state.index]
+        const rootScreen = `${currentTab.name}Screen`
+        const currentScreen = getFocusedRouteNameFromRoute(currentTab) ?? rootScreen
+
+        return (
         <HomeFooter
+          activeTab={currentScreen === rootScreen ? currentTab.name : null}
           onHomePress={() =>
             props.navigation.navigate(
               'Home',
@@ -212,7 +213,8 @@ export default function MainTabs() {
             )
           }
         />
-      )}
+        )
+      }}
     >
       <Tab.Screen
         name="Home"
