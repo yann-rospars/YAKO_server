@@ -64,19 +64,6 @@ export default function HomeFooter({
         />
 
         <FooterButton
-          active={activeTab === 'Account'}
-          label="Compte"
-          icon={
-            <MaterialIcons
-              name="person"
-              size={22}
-              color={activeTab === 'Account' ? '#FFFFFF' : '#111111'}
-            />
-          }
-          onPress={onAccountPress}
-        />
-
-        <FooterButton
           active={activeTab === 'Lists'}
           label="Listes"
           icon={
@@ -87,6 +74,19 @@ export default function HomeFooter({
             />
           }
           onPress={onListsPress}
+        />
+
+        <FooterButton
+          active={activeTab === 'Account'}
+          label="Compte"
+          icon={
+            <MaterialIcons
+              name="person"
+              size={22}
+              color={activeTab === 'Account' ? '#FFFFFF' : '#111111'}
+            />
+          }
+          onPress={onAccountPress}
         />
       </View>
 

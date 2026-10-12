@@ -204,13 +204,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
 
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
 
   sessionMetaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
 
     gap: 6,
   },
@@ -237,7 +237,9 @@ const styles = StyleSheet.create({
   },
 
   bookingButton: {
-    minHeight: 32,
+    minHeight: 38,
+    // Extend upward without increasing the space occupied in the row.
+    marginTop: -20,
 
     paddingHorizontal: 12,
     paddingVertical: 4,

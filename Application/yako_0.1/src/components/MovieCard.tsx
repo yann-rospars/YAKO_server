@@ -9,11 +9,12 @@ import { Movie } from '../types/movie'
 import { COLORS } from '../theme/colors'
 
 type Props = {
+  highlighted?: boolean
   movie: Movie
   onPress: () => void
 }
 
-export default function MovieCard({ movie, onPress }: Props) {
+export default function MovieCard({ movie, onPress, highlighted = false }: Props) {
   const getImageUrl = () => {
     if (!movie.poster_path) return null
 
@@ -52,7 +53,7 @@ export default function MovieCard({ movie, onPress }: Props) {
         pressed && styles.wrapperPressed,
       ]}
     >
-      <View style={styles.card}>
+      <View style={[styles.card, highlighted && { backgroundColor: COLORS.warning }]}>
         <View style={styles.posterContainer}>
           {imageUrl ? (
             <Image
@@ -69,9 +70,14 @@ export default function MovieCard({ movie, onPress }: Props) {
               </Text>
             </View>
           )}
+          {highlighted && (
+            <View pointerEvents="none" style={styles.watchlistBubble}>
+              <Text style={styles.watchlistBubbleText}>Vous l'attendiez !</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.information}>
+        <View style={[styles.information, highlighted && { backgroundColor: COLORS.warning }]}>
           <Text
             numberOfLines={2}
             ellipsizeMode="tail"
@@ -160,6 +166,24 @@ const styles = StyleSheet.create({
   poster: {
     width: '100%',
     height: '100%',
+  },
+
+  watchlistBubble: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    maxWidth: '90%',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    backgroundColor: COLORS.warning,
+    borderRadius: 10,
+  },
+
+  watchlistBubbleText: {
+    color: COLORS.text2,
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center',
   },
 
   posterPlaceholder: {

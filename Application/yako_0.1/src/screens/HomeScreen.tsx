@@ -1,5 +1,6 @@
 import SearchClearButton from '../components/SearchClearButton'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import {
   FlatList,
   Pressable,
@@ -30,6 +31,7 @@ import { Cinema } from '../types/cinema'
 
 import {
   getHomeMovies,
+  getWatchlistMovieIds,
 } from '../services/movieService'
 
 import {
@@ -77,6 +79,20 @@ export default function HomeScreen({
   const [movies, setMovies] =
     useState<Movie[]>([])
 
+  const [watchlistIds, setWatchlistIds] = useState<number[] | null>(null)
+  const movieRequest = useRef(0)
+
+  useFocusEffect(useCallback(() => {
+    let active = true
+    getWatchlistMovieIds()
+      .then(data => { if (active) setWatchlistIds(current => current?.join(',') === data.join(',') ? current : data) })
+      .catch(error => {
+        console.error('Erreur chargement des films de la liste systeme :', error)
+        if (active) setWatchlistIds([])
+      })
+    return () => { active = false }
+  }, []))
+
   const [cinemas, setCinemas] =
     useState<Cinema[]>([])
 
@@ -98,13 +114,20 @@ export default function HomeScreen({
     setHasMoreMovies,
   ] = useState(true)
 
-  const [includeNewReleases, setIncludeNewReleases] = useState(false)
-  const [includeOlderReleases, setIncludeOlderReleases] = useState(true)
+  const [movieFilters, setMovieFilters] = useState({
+    reissues: true,
+    newReleases: false,
+    all: false,
+  })
+  const futureSessionsOnly = !movieFilters.all
+  const includeNewReleases = movieFilters.all || movieFilters.newReleases
+  const includeOlderReleases = movieFilters.all || movieFilters.reissues
 
-  const [
-    futureSessionsOnly,
-    setFutureSessionsOnly,
-  ] = useState(true)
+  const toggleMovieFilter = (filter: 'reissues' | 'newReleases' | 'all') => {
+    setMovieFilters(current => filter === 'all'
+      ? { reissues: false, newReleases: false, all: !current.all }
+      : { ...current, all: false, [filter]: !current[filter] })
+  }
 
   const debouncedSearch =
     useDebouncedValue(
@@ -134,6 +157,7 @@ export default function HomeScreen({
     includeNewReleases,
     includeOlderReleases,
     futureSessionsOnly,
+    watchlistIds,
   ])
 
   /*
@@ -144,6 +168,8 @@ export default function HomeScreen({
 
   const fetchMovies =
     async () => {
+      if (futureSessionsOnly && watchlistIds === null) return
+      const request = ++movieRequest.current
       setLoading(true)
 
       try {
@@ -156,6 +182,7 @@ export default function HomeScreen({
             includeOlderReleases,
 
             futureSessionsOnly,
+            priorityMovieIds: watchlistIds ?? [],
 
             offset: 0,
 
@@ -163,6 +190,7 @@ export default function HomeScreen({
               MOVIES_PER_PAGE,
           })
 
+        if (request !== movieRequest.current) return
         setMovies(data)
 
         setMovieOffset(
@@ -179,11 +207,12 @@ export default function HomeScreen({
           error
         )
 
+        if (request !== movieRequest.current) return
         setMovies([])
         setMovieOffset(0)
         setHasMoreMovies(false)
       } finally {
-        setLoading(false)
+        if (request === movieRequest.current) setLoading(false)
       }
     }
 
@@ -196,6 +225,7 @@ export default function HomeScreen({
         return
       }
 
+      const request = movieRequest.current
       setLoadingMoreMovies(true)
 
       try {
@@ -208,6 +238,7 @@ export default function HomeScreen({
             includeOlderReleases,
 
             futureSessionsOnly,
+            priorityMovieIds: watchlistIds ?? [],
 
             offset:
               movieOffset,
@@ -216,6 +247,7 @@ export default function HomeScreen({
               MOVIES_PER_PAGE,
           })
 
+        if (request !== movieRequest.current) return
         setMovies(
           (currentMovies) => [
             ...currentMovies,
@@ -396,6 +428,7 @@ export default function HomeScreen({
     >
       <MovieCard
         movie={item}
+        highlighted={futureSessionsOnly && (watchlistIds?.includes(item.id) ?? false)}
         onPress={() =>
           navigation.navigate(
             'Movie',
@@ -537,6 +570,29 @@ export default function HomeScreen({
 
   const renderHeader = () => (
     <View style={styles.header}>
+      <View style={styles.modeRow}>
+        {(['movies', 'cinemas'] as const).map(mode => (
+          <Pressable
+            key={mode}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: searchMode === mode }}
+            style={({ pressed }) => [
+              styles.modeButton,
+              searchMode === mode && styles.modeButtonActive,
+              pressed && styles.modeButtonPressed,
+            ]}
+            onPress={() => {
+              if (searchMode === mode) return
+              setSearch('')
+              setSearchMode(mode)
+            }}
+          >
+            <Text style={styles.modeButtonText}>
+              {mode === 'movies' ? 'FILMS' : 'CINÉMAS'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <View style={styles.searchRow}>
         <View
           style={
@@ -589,37 +645,7 @@ export default function HomeScreen({
           )}
         </View>
 
-        <Pressable
-          style={({
-            pressed,
-          }) => [
-            styles.modeButton,
 
-            pressed &&
-              styles.modeButtonPressed,
-          ]}
-          onPress={() => {
-            setSearch('')
-
-            setSearchMode(
-              searchMode ===
-              'movies'
-                ? 'cinemas'
-                : 'movies'
-            )
-          }}
-        >
-          <Text
-            style={
-              styles.modeButtonText
-            }
-          >
-            {searchMode ===
-            'movies'
-              ? 'CINÉMAS'
-              : 'FILMS'}
-          </Text>
-        </Pressable>
       </View>
 
       {searchMode ===
@@ -637,9 +663,9 @@ export default function HomeScreen({
           ]}
         >
           {[
-            { label: 'AVEC SÉANCE', checked: futureSessionsOnly, toggle: () => setFutureSessionsOnly(value => !value) },
-            { label: 'DÉJÀ SORTI', checked: includeOlderReleases, toggle: () => setIncludeOlderReleases(value => !value) },
-            { label: 'NOUVEAUTÉ', checked: includeNewReleases, toggle: () => setIncludeNewReleases(value => !value) },
+            { label: 'Ressorties', checked: movieFilters.reissues, toggle: () => toggleMovieFilter('reissues') },
+            { label: 'Nouveautés', checked: movieFilters.newReleases, toggle: () => toggleMovieFilter('newReleases') },
+            { label: 'Tous les films', checked: movieFilters.all, toggle: () => toggleMovieFilter('all') },
           ].map(filter => (
             <Pressable
               key={filter.label}
@@ -648,7 +674,6 @@ export default function HomeScreen({
               accessibilityState={{ checked: filter.checked }}
               style={({ pressed }) => [
                 styles.sessionFilterButton,
-                filter.checked && styles.sessionFilterButtonActive,
                 pressed && styles.filterPressed,
               ]}
               onPress={filter.toggle}
@@ -724,9 +749,7 @@ export default function HomeScreen({
             ) =>
               `movie-${item.id}`
             }
-            ListHeaderComponent={
-              renderSectionTitle
-            }
+            ListHeaderComponent={renderSectionTitle}
             ListFooterComponent={
               hasMoreMovies ? (
                 <View
@@ -887,7 +910,7 @@ const styles = StyleSheet.create({
   // ── HEADER ───────────────────────────
 
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 2,
     paddingBottom: 10,
 
@@ -921,10 +944,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.contours,
 
-    borderTopLeftRadius: 11,
-    borderBottomLeftRadius: 11,
-    borderTopRightRadius: 0,
-    borderBottomRightRadius: 0,
+    borderRadius: 11,
   },
 
   searchIcon: {
@@ -973,31 +993,32 @@ const styles = StyleSheet.create({
 
   // ── MODE BUTTON ──────────────────────
 
+  modeRow: {
+    flexDirection: 'row',
+    gap: 7,
+    marginBottom: 6,
+  },
+
   modeButton: {
-    width: 72,
-    height: 42,
-
-    flexShrink: 0,
-
+    flex: 1,
+    minWidth: 0,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-
     backgroundColor: COLORS.secondary,
-
     borderWidth: 3,
-    borderLeftWidth: 0,
     borderColor: COLORS.contours,
+    borderRadius: 11,
+  },
 
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: 11,
-    borderBottomRightRadius: 11,
+  modeButtonActive: {
+    backgroundColor: COLORS.primary,
   },
 
   modeButtonText: {
     color: COLORS.text2,
 
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
@@ -1010,31 +1031,22 @@ const styles = StyleSheet.create({
 
   filtersRow: {
     width: '100%',
+    paddingLeft: 4,
 
     marginTop: 6,
 
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
 
   sessionFilterButton: {
-    height: 30,
-    flex: 1,
+    height: 16,
     minWidth: 0,
-    paddingHorizontal: 4,
 
     alignItems: 'center',
     justifyContent: 'center',
-
-    backgroundColor: COLORS.secondary,
-
-    borderWidth: 2,
-    borderColor: COLORS.contours,
-    borderRadius: 9,
-  },
-
-  sessionFilterButtonActive: {
-    backgroundColor: COLORS.primary,
   },
 
   sessionFilterContent: {
@@ -1049,7 +1061,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     color: COLORS.text2,
 
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.4,
   },

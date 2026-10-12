@@ -1,3 +1,6 @@
+import TimeRangeFilter, { TimeRange } from '../components/TimeRangeFilter'
+import { getDateYearsAgo } from '../utils/date'
+import { getWatchlistSessionDays } from '../services/watchlistCalendarService'
 import BackButton from '../components/BackButton'
 import {
   useCallback,
@@ -9,6 +12,7 @@ import {
 
 import {
   FlatList,
+  useWindowDimensions,
   Image,
   Modal,
   Pressable,
@@ -314,6 +318,7 @@ const arraysEqual = (
 }
 
 export default function CalendarScreen() {
+  const { width } = useWindowDimensions()
   const headerTransitionSequence = useRef(0)
   const [pendingHeaderTransition, setPendingHeaderTransition] = useState<number | null>(null)
   const finishHeaderTransition = useCallback((sequence: number) => {
@@ -397,19 +402,14 @@ export default function CalendarScreen() {
 
   /*
     ----------------------------------
-    SECTIONS REPLIABLES
+    FILTRES FILMS
     ----------------------------------
   */
 
-  const [
-    reissuesExpanded,
-    setReissuesExpanded,
-  ] = useState(true)
+  const [timeRange, setTimeRange] = useState<TimeRange>([0, 1439])
 
-  const [
-    currentExpanded,
-    setCurrentExpanded,
-  ] = useState(true)
+  const [includeReissues, setIncludeReissues] = useState(true)
+  const [includeNewReleases, setIncludeNewReleases] = useState(true)
 
   /*
     ----------------------------------
@@ -431,6 +431,19 @@ export default function CalendarScreen() {
     CHARGEMENT JOURS
     ----------------------------------
   */
+
+  const [watchlistDays, setWatchlistDays] = useState<Set<string>>(new Set())
+
+  useFocusEffect(useCallback(() => {
+    let active = true
+    getWatchlistSessionDays()
+      .then(days => { if (active) setWatchlistDays(days) })
+      .catch(error => {
+        console.error('Erreur chargement des jours de la liste systeme :', error)
+        if (active) setWatchlistDays(new Set())
+      })
+    return () => { active = false }
+  }, []))
 
   const fetchSessionDays = useCallback(async () => {
     // Only the first load uses a loader; focus refreshes keep the UI visible.
@@ -555,177 +568,34 @@ export default function CalendarScreen() {
     ----------------------------------
   */
 
-  const months =
-    useMemo<
-      CalendarMonth[]
-    >(() => {
-      if (
-        sessionDays.length ===
-        0
-      ) {
-        return []
-      }
+  const [displayedMonth, setDisplayedMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
 
-      const today =
-        startOfDay(
-          new Date()
-        )
+  const changeMonth = (offset: number) => {
+    setDisplayedMonth(current => new Date(current.getFullYear(), current.getMonth() + offset, 1))
+    scrollViewRef.current?.scrollTo({ y: 0, animated: false })
+  }
 
-      const lastSessionDay =
-        sessionDays[
-          sessionDays.length - 1
-        ].day
-
-      const lastSessionDate =
-        keyToDate(
-          lastSessionDay
-        )
-
-      const result:
-        CalendarMonth[] = []
-
-      let currentMonth =
-        new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          1
-        )
-
-      const finalMonth =
-        new Date(
-          lastSessionDate.getFullYear(),
-          lastSessionDate.getMonth(),
-          1
-        )
-
-      while (
-        currentMonth <=
-        finalMonth
-      ) {
-        const year =
-          currentMonth.getFullYear()
-
-        const month =
-          currentMonth.getMonth()
-
-        const firstDay =
-          new Date(
-            year,
-            month,
-            1
-          )
-
-        const lastDay =
-          new Date(
-            year,
-            month + 1,
-            0
-          )
-
-        const cells:
-          CalendarCell[] = []
-
-        const leadingEmptyCells =
-          getMondayIndex(
-            firstDay
-          )
-
-        for (
-          let index = 0;
-          index <
-          leadingEmptyCells;
-          index++
-        ) {
-          cells.push(null)
-        }
-
-        for (
-          let day = 1;
-          day <=
-          lastDay.getDate();
-          day++
-        ) {
-          const date =
-            new Date(
-              year,
-              month,
-              day
-            )
-
-          if (
-            date < today
-          ) {
-            cells.push(null)
-            continue
-          }
-
-          const dateKey =
-            dateToKey(date)
-
-          cells.push({
-            date,
-            dateKey,
-            dayNumber: day,
-
-            hasSessions:
-              sessionDates.has(
-                dateKey
-              ),
-
-            isAfterLastSession:
-              date >
-              lastSessionDate,
-          })
-        }
-
-        while (
-          cells.length % 7 !==
-          0
-        ) {
-          cells.push(null)
-        }
-
-        const weeks:
-          CalendarCell[][] = []
-
-        for (
-          let index = 0;
-          index <
-          cells.length;
-          index += 7
-        ) {
-          const week = cells.slice(index, index + 7)
-
-          if (week.some((day) => day !== null)) {
-            weeks.push(week)
-          }
-        }
-
-        result.push({
-          key:
-            `${year}-${month}`,
-
-          label:
-            MONTH_NAMES[
-              month
-            ],
-
-          weeks,
-        })
-
-        currentMonth =
-          new Date(
-            year,
-            month + 1,
-            1
-          )
-      }
-
-      return result
-    }, [
-      sessionDays,
-      sessionDates,
-    ])
+  const months = useMemo<CalendarMonth[]>(() => {
+    const year = displayedMonth.getFullYear()
+    const month = displayedMonth.getMonth()
+    const cells: CalendarCell[] = Array(getMondayIndex(displayedMonth)).fill(null)
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const lastSessionKey = sessionDays[sessionDays.length - 1]?.day
+    for (let day = 1; day <= lastDay; day++) {
+      const date = new Date(year, month, day)
+      const dateKey = dateToKey(date)
+      cells.push({ date, dateKey, dayNumber: day,
+        hasSessions: sessionDates.has(dateKey),
+        isAfterLastSession: !lastSessionKey || dateKey > lastSessionKey })
+    }
+    while (cells.length % 7 !== 0) cells.push(null)
+    const weeks: CalendarCell[][] = []
+    for (let index = 0; index < cells.length; index += 7) weeks.push(cells.slice(index, index + 7))
+    return [{ key: `${year}-${month}`, label: MONTH_NAMES[month], weeks }]
+  }, [displayedMonth, sessionDays, sessionDates])
 
   /*
     ----------------------------------
@@ -786,31 +656,24 @@ export default function CalendarScreen() {
     ----------------------------------
   */
 
-  const reissueMovies =
-    useMemo(
-      () =>
-        dayMovies.filter(
-          (movie) =>
-            movie.category ===
-            'reissue'
-        ),
-      [
-        dayMovies,
-      ]
-    )
-
-  const currentMovies =
-    useMemo(
-      () =>
-        dayMovies.filter(
-          (movie) =>
-            movie.category ===
-            'current'
-        ),
-      [
-        dayMovies,
-      ]
-    )
+  const filteredDayMovies = useMemo(() => {
+    if (!includeReissues && !includeNewReleases) return []
+    const cutoff = getDateYearsAgo(1)
+    const today = dateToKey(new Date())
+    return dayMovies.filter(movie => {
+      const matchesCategory = (includeReissues && includeNewReleases) ||
+        (!!movie.release_date && (includeReissues ? movie.release_date <= cutoff
+          : movie.release_date > cutoff && movie.release_date <= today))
+      if (!matchesCategory) return false
+      if (timeRange[0] === 0 && timeRange[1] === 1439) return true
+      const times = [...(movie.original_times ?? []), ...(movie.dubbed_times ?? []), ...(movie.local_times ?? [])]
+      return times.some(time => {
+        const [hours, minutes] = time.split(':').map(Number)
+        const total = hours * 60 + minutes
+        return total >= timeRange[0] && total <= timeRange[1]
+      })
+    })
+  }, [dayMovies, includeReissues, includeNewReleases, timeRange])
 
   /*
     ----------------------------------
@@ -877,6 +740,7 @@ export default function CalendarScreen() {
   */
 
   const handleDayPress = (day: CalendarDay) => {
+    if (!day.hasSessions || day.date < startOfDay(new Date())) return
     if (!selectedDate) {
       calendarScrollY.current = currentScrollY.current
       headerTransitionSequence.current += 1
@@ -1212,70 +1076,6 @@ export default function CalendarScreen() {
     ----------------------------------
   */
 
-  const renderMovieSection = (
-    title: string,
-    movies: CalendarMovie[],
-    expanded: boolean,
-    onToggle: () => void
-  ) => (
-    <View style={styles.movieSection}>
-      <Pressable
-        onPress={onToggle}
-        style={({ pressed }) => [
-          styles.movieSectionHeader,
-          pressed &&
-            styles.sectionHeaderPressed,
-        ]}
-      >
-        <View
-          style={
-            styles.movieSectionTitleContainer
-          }
-        >
-          <Text
-            style={
-              styles.movieSectionTitle
-            }
-          >
-            {title}
-          </Text>
-
-          <Text
-            style={
-              styles.movieSectionCount
-            }
-          >
-            {movies.length}
-          </Text>
-        </View>
-
-        <Text style={styles.chevron}>
-          {expanded ? '▲' : '▼'}
-        </Text>
-      </Pressable>
-
-      {expanded && (
-        <View
-          style={
-            styles.moviesContainer
-          }
-        >
-          {movies.length === 0 ? (
-            <Text
-              style={
-                styles.noMoviesText
-              }
-            >
-              Aucun film
-            </Text>
-          ) : (
-            movies.map(renderMovie)
-          )}
-        </View>
-      )}
-    </View>
-  )
-
   const renderMonthDays = () => {
     if (!selectedDate) return null
 
@@ -1315,7 +1115,7 @@ export default function CalendarScreen() {
               hasSessions: sessionDates.has(dateKey),
               isAfterLastSession: !lastSessionKey || dateKey > lastSessionKey,
             }
-            const disabled = date < today || day.isAfterLastSession
+            const disabled = date < today || !day.hasSessions
 
             return (
               <View
@@ -1338,10 +1138,9 @@ export default function CalendarScreen() {
                   style={({ pressed }) => [
                     styles.dayButton,
                     styles.monthDayButton,
+                    date < today && styles.monthDayButtonPast,
                     day.hasSessions && styles.dayButtonWithSessions,
-                    selectedDate === dateKey && styles.dayButtonSelected,
-                    disabled && styles.dayButtonDisabled,
-                    isSameDay(date, today) && styles.todayButton,
+                    selectedDate === dateKey && styles.monthDayButtonSelected,
                     day.hasSessions && pressed && styles.dayButtonPressed,
                   ]}
                 >
@@ -1350,10 +1149,14 @@ export default function CalendarScreen() {
                       styles.dayNumber,
                       day.hasSessions && styles.dayNumberWithSessions,
                       disabled && styles.dayNumberDisabled,
+                      isSameDay(date, today) && styles.monthDayNumberToday,
                     ]}
                   >
                     {day.dayNumber}
                   </Text>
+                  {watchlistDays.has(dateKey) && (
+                    <View pointerEvents="none" style={styles.watchlistDayDot} />
+                  )}
                 </Pressable>
               </View>
             )
@@ -1460,25 +1263,6 @@ export default function CalendarScreen() {
                         styles.monthSectionDayMode,
                     ]}
                   >
-                    {!dayMode && (
-                      <Animated.View
-                        entering={dayMode ? FadeIn.duration(220) : undefined}
-                        style={
-                          styles.monthHeader
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.monthTitle
-                          }
-                        >
-                          {
-                            month.label
-                          }
-                        </Text>
-                      </Animated.View>
-                    )}
-
                     <Animated.View
                       layout={dayMode ? LinearTransition.duration(320) : undefined}
                       style={
@@ -1568,6 +1352,8 @@ export default function CalendarScreen() {
                                       new Date()
                                     )
 
+                                  const disabled = day.date < startOfDay(new Date()) || !day.hasSessions
+
                                   const selected =
                                     selectedDate ===
                                     day.dateKey
@@ -1583,7 +1369,7 @@ export default function CalendarScreen() {
                                     >
                                       <Pressable
                                         disabled={
-                                          day.isAfterLastSession
+                                          disabled
                                         }
                                         onPress={() =>
                                           handleDayPress(
@@ -1601,7 +1387,7 @@ export default function CalendarScreen() {
                                           selected &&
                                             styles.dayButtonSelected,
 
-                                          day.isAfterLastSession &&
+                                          disabled &&
                                             styles.dayButtonDisabled,
 
                                           today &&
@@ -1619,7 +1405,7 @@ export default function CalendarScreen() {
                                             day.hasSessions &&
                                               styles.dayNumberWithSessions,
 
-                                            day.isAfterLastSession &&
+                                            disabled &&
                                               styles.dayNumberDisabled,
                                           ]}
                                         >
@@ -1627,7 +1413,9 @@ export default function CalendarScreen() {
                                             day.dayNumber
                                           }
                                         </Text>
-
+                                        {watchlistDays.has(day.dateKey) && (
+                                          <View pointerEvents="none" style={styles.watchlistDayDot} />
+                                        )}
                                       </Pressable>
                                     </View>
                                   )
@@ -1719,11 +1507,43 @@ export default function CalendarScreen() {
           <>
             {renderCalendar()}
             {renderArrondissementSelector()}
+            <View style={[styles.movieFiltersRow, { gap: width < 360 ? 3 : 7 }]}>
+              <View style={[styles.movieCategoryFilters, { gap: width < 360 ? 3 : 7 }]}>
+              {[
+                { label: 'Ressorties', checked: includeReissues, toggle: () => setIncludeReissues(value => !value) },
+                { label: 'Nouveautés', checked: includeNewReleases, toggle: () => setIncludeNewReleases(value => !value) },
+              ].map(filter => (
+                <Pressable key={filter.label} accessibilityRole="checkbox"
+                  accessibilityLabel={filter.label} accessibilityState={{ checked: filter.checked }}
+                  onPress={filter.toggle}
+                  style={({ pressed }) => [styles.movieFilterButton, pressed && styles.filterPressed]}>
+                  <View style={styles.movieFilterContent}>
+                    <MaterialIcons name={filter.checked ? 'check-box' : 'check-box-outline-blank'}
+                      size={15} color={COLORS.icon} />
+                    <Text style={styles.movieFilterText} numberOfLines={1} adjustsFontSizeToFit>
+                      {filter.label}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+              </View>
+              <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+            </View>
           </>
         ) : (
-          <Text style={styles.headerTitle}>
-            CALENDRIER
-          </Text>
+          <View style={styles.monthNavigation}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Mois précédent"
+              onPress={() => changeMonth(-1)} style={styles.monthNavigationButton}>
+              <MaterialIcons name="chevron-left" size={28} color={COLORS.icon} />
+            </Pressable>
+            <Text style={styles.headerTitle}>
+              {MONTH_NAMES[displayedMonth.getMonth()]} {displayedMonth.getFullYear()}
+            </Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Mois suivant"
+              onPress={() => changeMonth(1)} style={styles.monthNavigationButton}>
+              <MaterialIcons name="chevron-right" size={28} color={COLORS.icon} />
+            </Pressable>
+          </View>
         )}
       </Animated.View>
 
@@ -1774,31 +1594,9 @@ export default function CalendarScreen() {
                 <LoadingState />
               ) : (
                 <>
-                  {renderMovieSection(
-                    'Les films qui ressortent',
-                    reissueMovies,
-                    reissuesExpanded,
-                    () =>
-                      setReissuesExpanded(
-                        (
-                          current
-                        ) =>
-                          !current
-                      )
-                  )}
-
-                  {renderMovieSection(
-                    'Toujours au cinéma',
-                    currentMovies,
-                    currentExpanded,
-                    () =>
-                      setCurrentExpanded(
-                        (
-                          current
-                        ) =>
-                          !current
-                      )
-                  )}
+                  <View style={styles.moviesContainer}>
+                    {filteredDayMovies.map(renderMovie)}
+                  </View>
                 </>
               )}
             </Animated.View>
@@ -2108,7 +1906,7 @@ const styles =
     root: {
       flex: 1,
       backgroundColor:
-        COLORS.primary,
+        COLORS.contours,
     },
 
     scrollView: {
@@ -2123,7 +1921,7 @@ const styles =
 
     scrollContent: {
       paddingHorizontal: 12,
-      paddingTop: 18,
+      paddingTop: 44,
       paddingBottom: 32,
     },
 
@@ -2134,10 +1932,11 @@ const styles =
     */
 
     header: {
-      minHeight: 64,
+      minHeight: 0,
 
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingBottom: 10,
+      paddingTop: 2,
 
       alignItems: 'center',
       justifyContent: 'center',
@@ -2148,6 +1947,19 @@ const styles =
       borderBottomWidth: 3,
       borderBottomColor:
         COLORS.contours,
+    },
+
+    monthNavigation: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    monthNavigationButton: {
+      width: 36,
+      height: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     headerTitle: {
@@ -2164,13 +1976,13 @@ const styles =
     fixedDayHeader: {
       alignItems: 'stretch',
       paddingHorizontal: 12,
-      paddingTop: 6,
+      paddingTop: 2,
     },
 
     dayModeHeader: {
-      minHeight: 44,
+      minHeight: 0,
       marginBottom: 0,
-      paddingHorizontal: 2,
+      paddingRight: 2,
 
       flexDirection: 'row',
       alignItems: 'center',
@@ -2242,6 +2054,19 @@ const styles =
     monthDayButton: {
       width: 36,
       height: 36,
+      backgroundColor: COLORS.secondary,
+    },
+
+    monthDayButtonPast: {
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+
+    monthDayButtonSelected: {
+      borderColor: COLORS.contours,
+    },
+
+    monthDayNumberToday: {
+      color: COLORS.primary,
     },
 
     monthDayLabel: {
@@ -2287,10 +2112,9 @@ const styles =
     },
 
     weekDayText: {
-      color:
-        COLORS.text2,
+      color: COLORS.primary,
 
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: '900',
       letterSpacing: 0.4,
     },
@@ -2323,43 +2147,32 @@ const styles =
       ----------------------------------
     */
 
+    watchlistDayDot: {
+      position: 'absolute',
+      top: '50%',
+      marginTop: 9,
+      alignSelf: 'center',
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: COLORS.warning,
+    },
+
     dayButton: {
       width: '100%',
       aspectRatio: 1,
-
       alignItems: 'center',
       justifyContent: 'center',
-
-      backgroundColor:
-        COLORS.secondary,
-
-      borderWidth: 2,
-      borderColor:
-        COLORS.contours,
-
+      backgroundColor: COLORS.secondary,
+      borderWidth: 3,
+      borderColor: 'transparent',
       borderRadius: 10,
     },
 
-    dayButtonWithSessions: {
-      shadowColor:
-        COLORS.contours,
-
-      shadowOffset: {
-        width: 2,
-        height: 2,
-      },
-
-      shadowOpacity: 1,
-      shadowRadius: 0,
-
-      elevation: 3,
-    },
+    dayButtonWithSessions: {},
 
     dayButtonSelected: {
-      backgroundColor:
-        COLORS.primary,
-
-      borderWidth: 3,
+      backgroundColor: COLORS.primary,
     },
 
     dayButtonDisabled: {
@@ -2367,7 +2180,7 @@ const styles =
     },
 
     todayButton: {
-      borderWidth: 3,
+      backgroundColor: COLORS.primary,
     },
 
     dayButtonPressed: {
@@ -2412,6 +2225,40 @@ const styles =
 
     dayScrollContent: {
       paddingTop: 0,
+    },
+
+    movieFiltersRow: {
+      width: '100%',
+      paddingLeft: 4,
+      marginTop: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    movieCategoryFilters: {
+      maxWidth: '58%',
+      flexShrink: 0,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+    },
+    movieFilterButton: {
+      height: 16,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    movieFilterContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    movieFilterText: {
+      flexShrink: 1,
+      color: COLORS.text2,
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 0.4,
     },
 
     dayDetail: {

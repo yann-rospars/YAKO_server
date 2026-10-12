@@ -999,9 +999,10 @@ export default function MovieScreen({
 
                   return (
                     <View
-                      style={
-                        styles.movieListRow
-                      }
+                      style={[
+                        styles.movieListRow,
+                        item.type === 'system' && styles.systemMovieListRow,
+                      ]}
                     >
                       <View
                         style={
@@ -1591,6 +1592,10 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.contours,
     borderRadius: 12,
+  },
+
+  systemMovieListRow: {
+    backgroundColor: COLORS.primary,
   },
 
   movieListInformation: {

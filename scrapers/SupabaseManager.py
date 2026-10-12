@@ -305,20 +305,47 @@ class DBManager:
             print(f"Erreur lors de l'insertion du lien film-personne : {e}")
 
     # -- Session
+    # def insert_session(self, movie_id, cinema_id, starts_at, projection=None, version=None, booking_url=None, allocine_id=None):
+    #     try:
+    #         self.supabase.table("sessions").upsert(
+    #             {
+    #                 "movie_id": movie_id,
+    #                 "cinema_id": cinema_id,
+    #                 "starts_at": starts_at.isoformat() if starts_at else None,
+    #                 "projection": projection,
+    #                 "version": version,
+    #                 "booking_url": booking_url,
+    #                 "allocine_id": allocine_id
+    #             },
+    #             on_conflict="allocine_id"
+    #         ).execute()
+    #     except Exception as e:
+    #         print(f"Error inserting session: {e}")
+
+    # -- Session
     def insert_session(self, movie_id, cinema_id, starts_at, projection=None, version=None, booking_url=None, allocine_id=None):
         try:
+            version_mapping = {
+                "LOCAL": "VF",
+                "DUBBED": "VF",
+                "ORIGINAL": "VO"
+            }
+
+            mapped_version = version_mapping.get(version, version)
+
             self.supabase.table("sessions").upsert(
                 {
                     "movie_id": movie_id,
                     "cinema_id": cinema_id,
                     "starts_at": starts_at.isoformat() if starts_at else None,
                     "projection": projection,
-                    "version": version,
+                    "version": mapped_version,
                     "booking_url": booking_url,
                     "allocine_id": allocine_id
                 },
                 on_conflict="allocine_id"
             ).execute()
+
         except Exception as e:
             print(f"Error inserting session: {e}")
 

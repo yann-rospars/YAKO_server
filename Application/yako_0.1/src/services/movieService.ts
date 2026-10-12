@@ -6,6 +6,7 @@ import {
 } from '../utils/date'
 
 export type HomeMovieFilters = {
+  priorityMovieIds?: number[]
   search?: string
   minYear?: string
   maxYear?: string
@@ -96,7 +97,10 @@ function cleanMovies(
   Fonction principale utilisée
   par la Home.
 */
-export async function getHomeMovies({
+async function getHomeMoviePage({
+  onlyIds,
+  excludedIds,
+  countPriority = false,
   search = '',
   minYear = '',
   maxYear = '',
@@ -106,8 +110,8 @@ export async function getHomeMovies({
   futureSessionsOnly = false,
   offset = 0,
   limit = 18,
-}: HomeMovieFilters = {}): Promise<Movie[]> {
-  if (!includeNewReleases && !includeOlderReleases) return []
+}: HomeMovieFilters & { onlyIds?: number[]; excludedIds?: number[]; countPriority?: boolean }): Promise<{ movies: Movie[]; count: number }> {
+  if (!includeNewReleases && !includeOlderReleases) return { movies: [], count: 0 }
 
   const nowISO =
     getCurrentISOString()
@@ -131,7 +135,7 @@ export async function getHomeMovies({
     if (
       genreMovieIds.length === 0
     ) {
-      return []
+      return { movies: [], count: 0 }
     }
   }
 
@@ -157,7 +161,7 @@ export async function getHomeMovies({
           id,
           starts_at
         )
-      `)
+      `, { count: countPriority ? 'exact' : undefined })
       .gt(
         'sessions.starts_at',
         nowISO
@@ -172,7 +176,7 @@ export async function getHomeMovies({
         release_date,
         popularity,
         poster_path
-      `)
+      `, { count: countPriority ? 'exact' : undefined })
   }
 
   /*
@@ -180,6 +184,9 @@ export async function getHomeMovies({
     RECHERCHE
     ----------------------------------
   */
+
+  if (onlyIds) query = query.in('id', onlyIds)
+  if (excludedIds?.length) query = query.not('id', 'in', `(${excludedIds.join(',')})`)
 
   const formattedSearch =
     search.trim()
@@ -269,16 +276,35 @@ export async function getHomeMovies({
       offset + limit - 1
     )
 
-  const { data, error } =
+  const { data, error, count } =
     await query
 
   if (error) {
     throw error
   }
 
-  return cleanMovies(
-    (data ?? []) as MovieRow[]
-  )
+  return { movies: cleanMovies((data ?? []) as MovieRow[]), count: count ?? 0 }
+}
+
+export async function getHomeMovies(filters: HomeMovieFilters = {}): Promise<Movie[]> {
+  const ids = filters.futureSessionsOnly ? filters.priorityMovieIds ?? [] : []
+  if (!ids.length) return (await getHomeMoviePage(filters)).movies
+  const offset = filters.offset ?? 0
+  const limit = filters.limit ?? 18
+  const firstPage = await getHomeMoviePage({ ...filters, offset: 0, onlyIds: ids, countPriority: true })
+  const priority = offset === 0 ? firstPage : {
+    count: firstPage.count,
+    movies: offset >= firstPage.count ? [] :
+      (await getHomeMoviePage({ ...filters, onlyIds: ids })).movies,
+  }
+  if (priority.movies.length === limit) return priority.movies
+  const remaining = await getHomeMoviePage({
+    ...filters,
+    excludedIds: ids,
+    offset: Math.max(0, offset - priority.count),
+    limit: limit - priority.movies.length,
+  })
+  return [...priority.movies, ...remaining.movies]
 }
 
 /*
@@ -297,4 +323,25 @@ export async function getOldMoviesWithFutureSessions(
     offset: 0,
     limit: 18,
   })
+}
+export async function getWatchlistMovieIds(): Promise<number[]> {
+  const { data: { session }, error: authError } = await supabase.auth.getSession()
+  if (authError) throw authError
+  if (!session) return []
+  const ids: number[] = []
+  const pageSize = 200
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.from('list_movies')
+      .select('movie_id, lists!inner()')
+      .eq('lists.user_id', session.user.id)
+      .eq('lists.type', 'system')
+      .eq('lists.name', 'À voir au cinema')
+      .order('movie_id', { ascending: true })
+      .range(offset, offset + pageSize - 1)
+    if (error) throw error
+    const page = data ?? []
+    ids.push(...page.map(row => row.movie_id as number))
+    if (page.length < pageSize) break
+  }
+  return ids
 }
